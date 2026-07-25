@@ -3,6 +3,7 @@ import { SupportedLanguage } from '@/constants/LanguageContext';
 import { ROUTES, SearchRoute } from '@/constants/Routes';
 import * as BibleService from '@/services/BibleService';
 import { parseChapterAndVerse } from '@/services/BibleNavigation';
+import { normalizeSingleQueryParam } from '@/services/SearchQueryPolicy';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export interface SearchableItem {
@@ -41,8 +42,10 @@ const BIBLE_COORDINATES_REGEX = new RegExp(
  * Resolves a book ID and coordinates from a raw search query.
  * Supports multi-lingual book names and common abbreviations.
  */
-export const resolveBibleReference = (query: string, language: string) => {
-  const q = query.toLowerCase().trim();
+export const resolveBibleReference = (query: unknown, language: string) => {
+  const safeQuery = normalizeSingleQueryParam(query);
+  if (safeQuery === null) return null;
+  const q = safeQuery.toLowerCase().trim();
   if (!q) return null;
 
   // Try to match "Book Chapter:Verse" or "Book Chapter"
@@ -87,10 +90,12 @@ export const resolveBibleReference = (query: string, language: string) => {
  */
 export const isSearchMatch = (
   item: SearchableItem,
-  query: string,
+  query: unknown,
   language: string,
 ): boolean => {
-  const q = query.toLowerCase();
+  const safeQuery = normalizeSingleQueryParam(query);
+  if (safeQuery === null) return false;
+  const q = safeQuery.toLowerCase();
   const trimmedQ = q.trim();
   if (!trimmedQ) return false;
 

@@ -13,6 +13,7 @@ import { DESIGN_TOKENS } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
+import { normalizeSingleQueryParam } from '@/services/SearchQueryPolicy';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
 
 const uiLabels = {
@@ -82,7 +83,7 @@ export default function HymnalScreen() {
   // If we have a highlight query from the search bar, filter the list.
   // This allows the header search to behave like a filter for this view.
   const displayHymns = useMemo(() => {
-    const query = (highlight || '').toLowerCase().trim();
+    const query = (normalizeSingleQueryParam(highlight) || '').toLowerCase().trim();
     if (!query) return allHymns;
 
     return allHymns.filter(
@@ -96,8 +97,11 @@ export default function HymnalScreen() {
   // Scroll to a specific hymn if requested via search params (hymnNum)
   useEffect(() => {
     let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    if (hymnNum && /^\d+$/.test(hymnNum)) {
-      const index = displayHymns.findIndex((h) => h.number.toString() === hymnNum);
+    const safeHymnNumber = normalizeSingleQueryParam(hymnNum, 8);
+    if (safeHymnNumber && /^\d+$/.test(safeHymnNumber)) {
+      const index = displayHymns.findIndex(
+        (h) => h.number.toString() === safeHymnNumber,
+      );
       if (index !== -1) {
         scrollTimer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({

@@ -12,6 +12,7 @@ import {
 import { resolveSafeBackRoute, ROUTES } from '@/constants/Routes';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
+import { MAX_SEARCH_QUERY_LENGTH } from '@/services/SearchQueryPolicy';
 import { router, useSegments } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
@@ -188,6 +189,7 @@ export const GlobalHeader = (props: any) => {
               ref={searchRef}
               placeholder={searchLabels.searchPlaceholder}
               onChangeText={setSearchQuery}
+              maxLength={MAX_SEARCH_QUERY_LENGTH}
               value={searchQuery}
               onFocus={() => {
                 cancelBlurTimer();

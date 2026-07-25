@@ -20,16 +20,20 @@ function run(command, args) {
   }
 }
 
+function createGhPagesArguments(author = '') {
+  const argumentsList = ['gh-pages', '-d', 'dist', '--dotfiles'];
+  const normalizedAuthor = author.trim();
+  if (normalizedAuthor) argumentsList.push('-u', normalizedAuthor);
+  return argumentsList;
+}
+
 function deploy({ buildOnly = false } = {}) {
   run(npmCommand, ['run', 'version:check']);
   fs.rmSync(distPath, { recursive: true, force: true });
   run(npmCommand, ['run', 'build:web']);
 
   if (!buildOnly) {
-    const ghPagesArguments = ['gh-pages', '-d', 'dist', '--dotfiles'];
-    const author = process.env.GH_PAGES_AUTHOR?.trim();
-    if (author) ghPagesArguments.push('-u', author);
-    run(npxCommand, ghPagesArguments);
+    run(npxCommand, createGhPagesArguments(process.env.GH_PAGES_AUTHOR));
   }
 }
 
@@ -47,4 +51,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { deploy };
+module.exports = { createGhPagesArguments, deploy };

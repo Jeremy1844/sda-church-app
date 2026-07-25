@@ -7,12 +7,21 @@ const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const APP_BASE_PATH = '/sda-church-app';
 const PRECACHE_URLS = [];
 const NEVER_CACHE_PATH_PREFIXES = [
+  '/account/',
+  '/admin/',
   '/api/',
   '/auth/',
   '/oauth/',
   '/forms/',
+  '/giving/',
+  '/member/',
+  '/payment/',
+  '/payments/',
+  '/private/',
   '/prayer/',
+  '/roster/',
   '/schedule/',
+  '/user/',
 ];
 
 function isSameOriginRequest(requestUrl, workerOrigin) {
@@ -23,17 +32,26 @@ function isOwnedCacheName(cacheName) {
   return cacheName.startsWith(CACHE_PREFIX);
 }
 
-function isCacheablePath(pathname) {
+function isCacheablePath(pathname, cacheablePaths = PRECACHE_URLS) {
+  if (
+    typeof pathname !== 'string' ||
+    pathname.includes('%') ||
+    pathname.includes('\\') ||
+    (pathname !== APP_BASE_PATH && !pathname.startsWith(`${APP_BASE_PATH}/`))
+  ) {
+    return false;
+  }
+
   const appRelativePath =
-    pathname === APP_BASE_PATH
-      ? '/'
-      : pathname.startsWith(`${APP_BASE_PATH}/`)
-        ? pathname.slice(APP_BASE_PATH.length)
-        : pathname;
-  return !NEVER_CACHE_PATH_PREFIXES.some(
+    pathname === APP_BASE_PATH ? '/' : pathname.slice(APP_BASE_PATH.length);
+  if (NEVER_CACHE_PATH_PREFIXES.some(
     (prefix) =>
       appRelativePath === prefix.slice(0, -1) || appRelativePath.startsWith(prefix),
-  );
+  )) {
+    return false;
+  }
+
+  return cacheablePaths.includes(pathname);
 }
 
 function isCacheableResponse(response) {

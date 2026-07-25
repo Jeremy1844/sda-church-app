@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -6,6 +7,7 @@ import {
   getVerseOfDayDateKey,
   parseRenderedVerseOfDay,
   parseVerseOfDaySelection,
+  resolveVerseOfDayFailure,
   selectStableDailyIndex,
 } from './VerseOfDayPolicy.ts';
 
@@ -96,4 +98,50 @@ test('stable daily selection indexes converge for overlapping language loads', (
   const first = selectStableDailyIndex(`${dateKey}:book`, 66);
   assert.equal(first, selectStableDailyIndex(`${dateKey}:book`, 66));
   assert.equal(selectStableDailyIndex(`${dateKey}:book`, 0), null);
+});
+
+test('daily verse failure state preserves validated cache and ignores stale cancellation', () => {
+  assert.equal(
+    resolveVerseOfDayFailure({
+      requestIsCurrent: true,
+      cancelled: false,
+      hasValidatedVerse: true,
+    }),
+    'ready',
+  );
+  assert.equal(
+    resolveVerseOfDayFailure({
+      requestIsCurrent: true,
+      cancelled: false,
+      hasValidatedVerse: false,
+    }),
+    'unavailable',
+  );
+  assert.equal(
+    resolveVerseOfDayFailure({
+      requestIsCurrent: false,
+      cancelled: false,
+      hasValidatedVerse: false,
+    }),
+    'ignore',
+  );
+  assert.equal(
+    resolveVerseOfDayFailure({
+      requestIsCurrent: true,
+      cancelled: true,
+      hasValidatedVerse: false,
+    }),
+    'ignore',
+  );
+});
+
+test('Home renders a localized unavailable state with an explicit retry action', () => {
+  const source = fs.readFileSync(
+    new URL('../app/(tabs)/index.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.match(source, /displayedVerseLoadStatus === 'unavailable'/);
+  assert.match(source, /setVerseRetryNonce\(\(value\) => value \+ 1\)/);
+  assert.match(source, /verseUnavailable:/);
+  assert.match(source, /accessibilityLiveRegion="polite"/);
 });

@@ -7,7 +7,6 @@ import {
   CHURCH_BUILDING_IMAGE_URL,
   CHURCH_LATITUDE,
   CHURCH_LONGITUDE,
-  getSunsetApiUrl,
   openURL,
   openSabbathStream,
 } from '@/constants/ExternalLinks';
@@ -26,12 +25,19 @@ import {
   LatestActivity,
 } from '@/services/LatestActivityService';
 import {
-  formatLocalCalendarDate,
+  calculateSabbathWindow,
+  createSunsetRangeRequest,
+  getSunsetApiRangeUrl,
+  isSameSunsetLocation,
   normalizeSunsetCoordinates,
-  parseSunsetApiPayload,
+  parseSunsetV2Range,
+  selectNextSunsetPair,
   selectSunsetLocation,
   SunsetCoordinates,
   SUNSET_LOCATION_PRIVACY_COPY,
+  SUNSET_PROVIDER_ATTRIBUTION_URL,
+  SUNSET_REQUEST_TIMEOUT_MS,
+  SunsetTimesState,
 } from '@/services/SunsetLocationPolicy';
 import {
   getRenderedVerseOfDayCacheKey,
@@ -39,7 +45,9 @@ import {
   parseRenderedVerseOfDay,
   parseVerseOfDaySelection,
   RenderedVerseOfDay,
+  resolveVerseOfDayFailure,
   selectStableDailyIndex,
+  VerseOfDayLoadStatus,
   VerseOfDaySelection,
   VOTD_CONFIG_KEY,
 } from '@/services/VerseOfDayPolicy';
@@ -65,6 +73,14 @@ const ELMHURST_SUNSET_COORDINATES: SunsetCoordinates = Object.freeze({
 });
 
 type LocationRequestStatus = 'default' | 'requesting' | 'local' | 'unavailable';
+
+type TaggedVerseLoadState = Readonly<{
+  status: VerseOfDayLoadStatus;
+  requestId: number;
+  language: SupportedLanguage;
+  translationId: string;
+  dateKey: string;
+}>;
 
 function createAbortError() {
   return Object.assign(new Error('Verse-of-the-day request was cancelled.'), {
@@ -221,6 +237,8 @@ export default function HomeScreen() {
     en: {
       welcome: 'Welcome!',
       subtitle: 'Loading daily verse...',
+      verseUnavailable: 'The daily verse is unavailable right now.',
+      retry: 'Try again',
       verseOfDay: 'A word for your unique journey today',
       readVerse: 'Read Verse',
       shareVerse: 'Share Verse',
@@ -240,12 +258,16 @@ export default function HomeScreen() {
       sabbathStarts: 'Sabbath starts in',
       sabbathEnds: 'Sabbath ends in',
       isSabbath: 'Happy Sabbath!',
+      sunsetLoading: 'Loading verified sunset times…',
+      sunsetUnavailable: 'Sunset times are unavailable',
       locationLocal: 'Location: Local',
       locationDefault: 'Location: Elmhurst, NY',
     },
     zh: {
       welcome: '歡迎！',
       subtitle: '正在載入經文...',
+      verseUnavailable: '目前無法載入每日經文。',
+      retry: '再試一次',
       verseOfDay: '今日為您預備的話語',
       readVerse: '查閱經文',
       shareVerse: '分享經文',
@@ -265,12 +287,16 @@ export default function HomeScreen() {
       sabbathStarts: '距離安息日還有',
       sabbathEnds: '距離安息日結束還有',
       isSabbath: '安息日快樂！',
+      sunsetLoading: '正在載入日落時間…',
+      sunsetUnavailable: '目前無法取得日落時間',
       locationLocal: '位置：目前所在地',
       locationDefault: '位置：紐約艾姆赫斯特',
     },
     'zh-cn': {
       welcome: '欢迎！',
       subtitle: '正在载入经文...',
+      verseUnavailable: '目前无法载入每日经文。',
+      retry: '再试一次',
       verseOfDay: '今日为您准备的话语',
       readVerse: '查阅经文',
       shareVerse: '分享经文',
@@ -290,12 +316,16 @@ export default function HomeScreen() {
       sabbathStarts: '距离安息日还有',
       sabbathEnds: '距离安息日结束还有',
       isSabbath: '安息日快乐！',
+      sunsetLoading: '正在载入日落时间…',
+      sunsetUnavailable: '目前无法取得日落时间',
       locationLocal: '位置：当前所在地',
       locationDefault: '位置：纽约艾姆赫斯特',
     },
     es: {
       welcome: '¡Bienvenido!',
       subtitle: 'Cargando versículo...',
+      verseUnavailable: 'El versículo diario no está disponible ahora.',
+      retry: 'Intentar de nuevo',
       verseOfDay: 'Una palabra para tu camino hoy',
       readVerse: 'Leer Versículo',
       shareVerse: 'Compartir',
@@ -315,6 +345,8 @@ export default function HomeScreen() {
       sabbathStarts: 'El Sábado comienza en',
       sabbathEnds: 'El Sábado termina en',
       isSabbath: '¡Feliz Sábado!',
+      sunsetLoading: 'Cargando las horas verificadas del atardecer…',
+      sunsetUnavailable: 'Las horas del atardecer no están disponibles',
       locationLocal: 'Ubicación: Local',
       locationDefault: 'Ubicación: Elmhurst, NY',
     },
@@ -324,21 +356,59 @@ export default function HomeScreen() {
 
   const [randomVerse, setRandomVerse] = useState<RenderedVerseOfDay | null>(null);
   const verseRequestId = useRef(0);
+  const [verseRetryNonce, setVerseRetryNonce] = useState(0);
+  const [verseLoadState, setVerseLoadState] = useState<TaggedVerseLoadState>({
+    status: 'loading',
+    requestId: 0,
+    language: requestedLanguage,
+    translationId: requestedTranslationId,
+    dateKey: verseDateKey,
+  });
   const [latestActivity, setLatestActivity] = useState<LatestActivity | null>(null);
 
   const [isSabbath, setIsSabbath] = useState(false);
   const [countdown, setCountdown] = useState('');
   const [targetDate, setTargetDate] = useState<Date | null>(null);
   const [userCoords, setUserCoords] = useState<SunsetCoordinates | null>(null);
+  const geolocationRequestId = useRef(0);
+  const sunsetRequestId = useRef(0);
+  const expiredSunsetRequestId = useRef<number | null>(null);
+  const [sunsetRefreshNonce, setSunsetRefreshNonce] = useState(0);
   const [locationDisclosureVisible, setLocationDisclosureVisible] = useState(false);
   const [locationStatus, setLocationStatus] =
     useState<LocationRequestStatus>('default');
-  const [sunsets, setSunsets] = useState<{ fri: Date | null; sat: Date | null }>({
-    fri: null,
-    sat: null,
-  });
+  const [sunsetState, setSunsetState] = useState<SunsetTimesState>(() => ({
+    status: 'loading',
+    requestId: 0,
+    dateKey: '',
+    location: selectSunsetLocation(ELMHURST_SUNSET_COORDINATES, null),
+  }));
 
   const useGps = userCoords !== null;
+  const selectedSunsetLocation = selectSunsetLocation(
+    ELMHURST_SUNSET_COORDINATES,
+    userCoords,
+  );
+  const sunsetRangeRequest = createSunsetRangeRequest(new Date());
+  const sunsetDateKey = `${sunsetRangeRequest.dateStart}:${sunsetRangeRequest.dateEnd}`;
+  const sunsetStateMatchesLocation = isSameSunsetLocation(
+    sunsetState.location,
+    selectedSunsetLocation,
+  ) && sunsetState.dateKey === sunsetDateKey;
+  const sunsetTimesReady =
+    sunsetStateMatchesLocation && sunsetState.status === 'ready';
+  const sunsetTimesUnavailable =
+    sunsetStateMatchesLocation && sunsetState.status === 'unavailable';
+  const sunsetCountdownReady =
+    sunsetTimesReady && targetDate !== null && countdown.length > 0;
+  const displayedSunsetTimeZone =
+    sunsetCountdownReady && sunsetState.status === 'ready' ? sunsetState.tzid : null;
+  const displayedSunsetDate =
+    sunsetCountdownReady && sunsetState.status === 'ready'
+      ? isSabbath
+        ? sunsetState.saturdayDate
+        : sunsetState.fridayDate
+      : null;
 
   const displayedVerse =
     randomVerse?.language === requestedLanguage &&
@@ -346,10 +416,15 @@ export default function HomeScreen() {
     randomVerse.dateKey === verseDateKey
       ? randomVerse
       : null;
+  const displayedVerseLoadStatus =
+    verseLoadState.language === requestedLanguage &&
+    verseLoadState.translationId === requestedTranslationId &&
+    verseLoadState.dateKey === verseDateKey
+      ? verseLoadState.status
+      : 'loading';
 
   useEffect(() => {
     const controller = new AbortController();
-    setSunsets({ fri: null, sat: null });
     fetchLatestActivity(controller.signal)
       .then(setLatestActivity)
       .catch((error) => {
@@ -360,10 +435,20 @@ export default function HomeScreen() {
     return () => controller.abort();
   }, []);
 
+  useEffect(
+    () => () => {
+      // The browser geolocation API has no cancellation handle. Invalidating its
+      // generation makes every pending callback inert after unmount.
+      geolocationRequestId.current += 1;
+    },
+    [],
+  );
+
   // The browser permission prompt is reachable only from the disclosure dialog's
   // Continue action. Home always starts with Elmhurst and never persists coordinates.
   const requestCurrentLocation = () => {
     setLocationDisclosureVisible(false);
+    const requestId = ++geolocationRequestId.current;
 
     if (
       Platform.OS !== 'web' ||
@@ -378,6 +463,7 @@ export default function HomeScreen() {
     setLocationStatus('requesting');
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (geolocationRequestId.current !== requestId) return;
         const coordinates = normalizeSunsetCoordinates(
           position.coords.latitude,
           position.coords.longitude,
@@ -393,6 +479,7 @@ export default function HomeScreen() {
         setLocationStatus('local');
       },
       () => {
+        if (geolocationRequestId.current !== requestId) return;
         setUserCoords(null);
         setLocationStatus('unavailable');
       },
@@ -401,67 +488,110 @@ export default function HomeScreen() {
   };
 
   const useElmhurstLocation = () => {
+    geolocationRequestId.current += 1;
     setUserCoords(null);
     setLocationStatus('default');
   };
 
   useEffect(() => {
     const controller = new AbortController();
+    const requestId = ++sunsetRequestId.current;
+    const location = selectSunsetLocation(
+      ELMHURST_SUNSET_COORDINATES,
+      userCoords,
+    );
+    let didTimeout = false;
+    const timeoutId = setTimeout(() => {
+      didTimeout = true;
+      controller.abort();
+    }, SUNSET_REQUEST_TIMEOUT_MS);
+
+    setCountdown('');
+    setTargetDate(null);
+    setIsSabbath(false);
+    setSunsetState({
+      status: 'loading',
+      requestId,
+      dateKey: sunsetDateKey,
+      location,
+    });
 
     const fetchSunsets = async () => {
-      const location = selectSunsetLocation(
-        ELMHURST_SUNSET_COORDINATES,
-        userCoords,
-      );
       const { lat, lng } = location.coordinates;
       const requestOptions =
         location.source === 'device'
           ? ({ cache: 'no-store', signal: controller.signal } as const)
           : { signal: controller.signal };
 
-      const getDayDate = (d: number) => {
-        const t = new Date();
-        // Normalize to Noon local time to ensure the date is stable across UTC/Local
-        // conversions before we apply our longitude-based shift.
-        t.setDate(t.getDate() + (d - t.getDay()));
-        t.setHours(12, 0, 0, 0);
-        return formatLocalCalendarDate(t);
-      };
-
       try {
-        const [fRes, sRes] = await Promise.all([
-          fetch(getSunsetApiUrl(lat, lng, getDayDate(5)), requestOptions),
-          fetch(getSunsetApiUrl(lat, lng, getDayDate(6)), requestOptions),
-        ]);
-        if (!fRes.ok || !sRes.ok) {
+        const response = await fetch(
+          getSunsetApiRangeUrl(
+            lat,
+            lng,
+            sunsetRangeRequest.dateStart,
+            sunsetRangeRequest.dateEnd,
+          ),
+          requestOptions,
+        );
+        if (!response.ok) {
           throw new Error('Sunset provider returned an unsuccessful response.');
         }
-        const fData = await fRes.json();
-        const sData = await sRes.json();
-        const fri = parseSunsetApiPayload(fData);
-        const sat = parseSunsetApiPayload(sData);
-        if (!fri || !sat) {
-          throw new Error('Sunset provider returned malformed data.');
-        }
-        if (controller.signal.aborted) return;
 
-        setSunsets({ fri, sat });
-      } catch (e) {
-        if ((e as Error)?.name !== 'AbortError') {
-          console.warn('Failed to fetch sunset times:', e);
-          setSunsets({ fri: null, sat: null });
-          if (location.source === 'device') {
-            setUserCoords(null);
-            setLocationStatus('unavailable');
-          }
+        const responseData: unknown = await response.json();
+        const verifiedRange = parseSunsetV2Range(
+          responseData,
+          location.coordinates,
+          sunsetRangeRequest.expectedDates,
+        );
+        const pair = verifiedRange
+          ? selectNextSunsetPair(verifiedRange, new Date())
+          : null;
+        if (!pair) throw new Error('Sunset provider returned no valid upcoming pair.');
+
+        if (controller.signal.aborted) {
+          throw Object.assign(new Error('Sunset request was cancelled.'), {
+            name: 'AbortError',
+          });
         }
+        if (sunsetRequestId.current !== requestId) return;
+
+        setSunsetState({
+          status: 'ready',
+          requestId,
+          dateKey: sunsetDateKey,
+          location,
+          fri: pair.fri,
+          sat: pair.sat,
+          fridayDate: pair.fridayDate,
+          saturdayDate: pair.saturdayDate,
+          tzid: pair.tzid,
+        });
+      } catch (error) {
+        if (sunsetRequestId.current !== requestId) return;
+        if (isAbortError(error) && !didTimeout) return;
+
+        if (didTimeout) console.warn('Sunset request timed out.');
+        else console.warn('Failed to fetch sunset times:', error);
+        setSunsetState({
+          status: 'unavailable',
+          requestId,
+          dateKey: sunsetDateKey,
+          location,
+        });
+      } finally {
+        clearTimeout(timeoutId);
       }
     };
     fetchSunsets();
-    return () => controller.abort();
-  }, [userCoords, new Date().toDateString()]);
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [userCoords, sunsetDateKey, sunsetRefreshNonce]);
 
-  const formatDisplayDate = (date: Date) => {
+  const formatDisplayDate = (dateKey: string) => {
+    const [year, month, dayOfMonth] = dateKey.split('-').map(Number);
+    const date = new Date(year, month - 1, dayOfMonth, 12, 0, 0);
     const options: Intl.DateTimeFormatOptions = {
       weekday: 'long',
       month: 'long',
@@ -491,43 +621,33 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    // If GPS status changes (user clicks "Allow"), the component will re-render
-    // and this timer logic will re-calculate based on the new context.
-    if (countdown) setCountdown(''); // Reset display to trigger immediate refresh
+    setCountdown('');
+    setTargetDate(null);
+    setIsSabbath(false);
+
+    if (!sunsetTimesReady || sunsetState.status !== 'ready') return;
 
     const updateTimer = () => {
-      const now = new Date();
-      const day = now.getDay();
-
-      const getFallback = (d: number) => {
-        const t = new Date(now);
-        t.setDate(now.getDate() + (d - day));
-        t.setHours(18, 0, 0, 0);
-        return t;
-      };
-
-      const friTarget = sunsets.fri || getFallback(5);
-      const satTarget = sunsets.sat || getFallback(6);
-
-      let isSabbathNow = false;
-      let target: Date;
-
-      if (now < friTarget) {
-        isSabbathNow = false;
-        target = friTarget;
-      } else if (now < satTarget) {
-        isSabbathNow = true;
-        target = satTarget;
-      } else {
-        isSabbathNow = false;
-        target = new Date(friTarget);
-        target.setDate(target.getDate() + 7);
+      const window = calculateSabbathWindow(
+        new Date(),
+        sunsetState.fri,
+        sunsetState.sat,
+      );
+      if (!window) {
+        setCountdown('');
+        setTargetDate(null);
+        setIsSabbath(false);
+        if (expiredSunsetRequestId.current !== sunsetState.requestId) {
+          expiredSunsetRequestId.current = sunsetState.requestId;
+          setSunsetRefreshNonce((value) => value + 1);
+        }
+        return;
       }
 
-      setTargetDate(target);
-      setIsSabbath(isSabbathNow);
+      setTargetDate(window.target);
+      setIsSabbath(window.isSabbath);
 
-      const diff = Math.max(0, target.getTime() - now.getTime());
+      const diff = window.millisecondsRemaining;
       const d = Math.floor(diff / (1000 * 60 * 60 * 24));
       const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
       const m = Math.floor((diff / (1000 * 60)) % 60);
@@ -542,14 +662,26 @@ export default function HomeScreen() {
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, [useGps, sunsets]); // Re-run timer logic if GPS permission or sunset data changes
+  }, [sunsetState, sunsetTimesReady]);
 
   useEffect(() => {
     const controller = new AbortController();
     const requestId = ++verseRequestId.current;
     const cacheKey = getRenderedVerseOfDayCacheKey(requestedLanguage);
+    let hasValidatedVerse = displayedVerse !== null;
+    const createLoadState = (
+      status: VerseOfDayLoadStatus,
+    ): TaggedVerseLoadState => ({
+      status,
+      requestId,
+      language: requestedLanguage,
+      translationId: requestedTranslationId,
+      dateKey: verseDateKey,
+    });
     const isCurrentRequest = () =>
       !controller.signal.aborted && verseRequestId.current === requestId;
+
+    setVerseLoadState(createLoadState(hasValidatedVerse ? 'ready' : 'loading'));
 
     const loadRandomVerse = async () => {
       try {
@@ -587,7 +719,11 @@ export default function HomeScreen() {
           requestedLanguage,
           requestedTranslationId,
         );
-        if (cachedVerse) setRandomVerse(cachedVerse);
+        if (cachedVerse) {
+          hasValidatedVerse = true;
+          setRandomVerse(cachedVerse);
+          setVerseLoadState(createLoadState('ready'));
+        }
 
         const renderedVerse = await renderDailyVerseWithFallback(
           selection,
@@ -597,18 +733,26 @@ export default function HomeScreen() {
         );
         if (!isCurrentRequest()) return;
 
+        hasValidatedVerse = true;
         setRandomVerse(renderedVerse);
+        setVerseLoadState(createLoadState('ready'));
         await AsyncStorage.setItem(cacheKey, JSON.stringify(renderedVerse));
       } catch (error) {
-        if (isCurrentRequest() && !isAbortError(error)) {
-          console.warn('Failed to load the daily verse:', error);
-        }
+        const failureStatus = resolveVerseOfDayFailure({
+          requestIsCurrent: verseRequestId.current === requestId,
+          cancelled: controller.signal.aborted || isAbortError(error),
+          hasValidatedVerse,
+        });
+        if (failureStatus === 'ignore') return;
+
+        setVerseLoadState(createLoadState(failureStatus));
+        console.warn('Failed to load the daily verse:', error);
       }
     };
 
     loadRandomVerse();
     return () => controller.abort();
-  }, [requestedLanguage, requestedTranslationId, verseDateKey]);
+  }, [requestedLanguage, requestedTranslationId, verseDateKey, verseRetryNonce]);
 
   const handleShare = async () => {
     if (!displayedVerse) return;
@@ -668,6 +812,7 @@ export default function HomeScreen() {
           </Text>
           <Text
             variant="titleMedium"
+            accessibilityLiveRegion="polite"
             style={{
               color: '#FFFFFF',
               textAlign: 'center',
@@ -677,7 +822,9 @@ export default function HomeScreen() {
           >
             {displayedVerse
               ? `${displayedVerse.text}\n— ${displayedVerse.reference}`
-              : labels.subtitle}
+              : displayedVerseLoadStatus === 'unavailable'
+                ? labels.verseUnavailable
+                : labels.subtitle}
           </Text>
           <View
             style={{
@@ -688,25 +835,39 @@ export default function HomeScreen() {
               paddingHorizontal: 16,
             }}
           >
-            <Button
-              mode="outlined"
-              icon="share-variant"
-              onPress={handleShare}
-              disabled={!displayedVerse}
-              style={{ borderRadius: 20, flex: 1, borderColor: '#FFFFFF' }}
-              textColor="#FFFFFF"
-            >
-              {(labels as any).shareVerse}
-            </Button>
-            <Button
-              mode="contained"
-              icon="book-open-variant"
-              onPress={navigateToVerse}
-              disabled={!displayedVerse}
-              style={{ borderRadius: 20, flex: 1 }}
-            >
-              {(labels as any).readVerse}
-            </Button>
+            {displayedVerseLoadStatus === 'unavailable' && !displayedVerse ? (
+              <Button
+                mode="contained"
+                icon="refresh"
+                onPress={() => setVerseRetryNonce((value) => value + 1)}
+                style={{ borderRadius: 20, flex: 1 }}
+                accessibilityLabel={labels.retry}
+              >
+                {labels.retry}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  mode="outlined"
+                  icon="share-variant"
+                  onPress={handleShare}
+                  disabled={!displayedVerse}
+                  style={{ borderRadius: 20, flex: 1, borderColor: '#FFFFFF' }}
+                  textColor="#FFFFFF"
+                >
+                  {(labels as any).shareVerse}
+                </Button>
+                <Button
+                  mode="contained"
+                  icon="book-open-variant"
+                  onPress={navigateToVerse}
+                  disabled={!displayedVerse}
+                  style={{ borderRadius: 20, flex: 1 }}
+                >
+                  {(labels as any).readVerse}
+                </Button>
+              </>
+            )}
           </View>
         </ImageBackground>
 
@@ -733,23 +894,33 @@ export default function HomeScreen() {
                 <View style={styles.labelColumn}>
                   <Text
                     variant="bodyLarge"
+                    accessibilityLiveRegion="polite"
                     style={{ color: theme.colors.onSurface, fontWeight: '600' }}
                   >
-                    {isSabbath ? labels.sabbathEnds : labels.sabbathStarts}
+                    {sunsetCountdownReady
+                      ? isSabbath
+                        ? labels.sabbathEnds
+                        : labels.sabbathStarts
+                      : sunsetTimesUnavailable
+                        ? labels.sunsetUnavailable
+                        : labels.sunsetLoading}
                   </Text>
-                  {targetDate && (
+                  {displayedSunsetDate && (
                     <Text
                       variant="labelSmall"
                       style={{ color: theme.colors.primary, fontWeight: '700' }}
                     >
-                      {formatDisplayDate(targetDate)}
+                      {formatDisplayDate(displayedSunsetDate)}
                     </Text>
                   )}
                   <Text
                     variant="labelSmall"
                     style={{ color: theme.colors.onSurfaceVariant, opacity: 0.6 }}
                   >
-                    {useGps ? labels.locationLocal : labels.locationDefault}
+                    {selectedSunsetLocation.source === 'device'
+                      ? labels.locationLocal
+                      : labels.locationDefault}
+                    {displayedSunsetTimeZone ? ` · ${displayedSunsetTimeZone}` : ''}
                   </Text>
                 </View>
 
@@ -760,7 +931,7 @@ export default function HomeScreen() {
                     { color: theme.colors.onSurfaceVariant },
                   ]}
                 >
-                  {countdown || '00:00:00'}
+                  {sunsetCountdownReady ? countdown : '—'}
                 </Text>
               </View>
               <View style={styles.locationControls}>
@@ -781,6 +952,21 @@ export default function HomeScreen() {
                     : locationStatus === 'unavailable'
                       ? SUNSET_LOCATION_PRIVACY_COPY.retryAction
                       : SUNSET_LOCATION_PRIVACY_COPY.action}
+                </Button>
+                <Button
+                  mode="text"
+                  compact
+                  icon="open-in-new"
+                  accessibilityLabel="Sunset data provider: Sunrise-Sunset.org"
+                  onPress={() =>
+                    openURL(
+                      SUNSET_PROVIDER_ATTRIBUTION_URL,
+                      'Error',
+                      'Could not open Sunrise-Sunset.org.',
+                    )
+                  }
+                >
+                  Data: Sunrise-Sunset.org
                 </Button>
                 {locationStatus === 'requesting' && (
                   <Text

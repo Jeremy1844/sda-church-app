@@ -23,6 +23,17 @@ export interface RenderedVerseOfDay extends VerseOfDaySelection {
   translationId: string;
 }
 
+export type VerseOfDayLoadStatus = 'loading' | 'ready' | 'unavailable';
+
+export function resolveVerseOfDayFailure(input: {
+  requestIsCurrent: boolean;
+  cancelled: boolean;
+  hasValidatedVerse: boolean;
+}): VerseOfDayLoadStatus | 'ignore' {
+  if (!input.requestIsCurrent || input.cancelled) return 'ignore';
+  return input.hasValidatedVerse ? 'ready' : 'unavailable';
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

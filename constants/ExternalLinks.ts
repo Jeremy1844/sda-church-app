@@ -34,14 +34,6 @@ export const CHURCH_LATITUDE = 40.74546;
 export const CHURCH_LONGITUDE = -73.88914;
 
 /**
- * Sunset API Endpoint
- * Centralizing this here follows Tenet 5 (Simplicity) by providing a
- * single source for external API endpoints.
- */
-export const getSunsetApiUrl = (lat: number, lng: number, date: string) =>
-  `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&date=${date}&formatted=0`;
-
-/**
  * Centralized hub for external destinations.
  * Consolidating these here satisfies Tenet 5 (Simplicity) by providing
  * a single source of truth for the app's external touchpoints.

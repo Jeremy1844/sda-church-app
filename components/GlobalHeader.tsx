@@ -40,6 +40,7 @@ export const GlobalHeader = (props: any) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<any>(null);
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headerRef = useRef<View>(null);
   const insets = useSafeAreaInsets();
 
@@ -52,10 +53,19 @@ export const GlobalHeader = (props: any) => {
     outputRange: [-(headerHeight || 150), 0],
   });
 
+  const cancelBlurTimer = () => {
+    if (blurTimerRef.current) {
+      clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = null;
+    }
+  };
+
   // Clear search state whenever the navigation path changes (switching tabs or views)
   useEffect(() => {
+    cancelBlurTimer();
     setSearchQuery('');
     setIsSearching(false);
+    return cancelBlurTimer;
   }, [segments.join('/')]);
 
   // A pillar root is the entry-point for one of our four main tabs (Tenet 5 & 7).
@@ -96,6 +106,7 @@ export const GlobalHeader = (props: any) => {
 
   const handleSelectResult = (item: SearchableItem) => {
     const q = searchQuery.toLowerCase();
+    cancelBlurTimer();
     setSearchQuery('');
     setIsSearching(false);
     searchRef.current?.blur();
@@ -170,7 +181,10 @@ export const GlobalHeader = (props: any) => {
               placeholder={searchLabels.searchPlaceholder}
               onChangeText={setSearchQuery}
               value={searchQuery}
-              onFocus={() => setIsSearching(true)}
+              onFocus={() => {
+                cancelBlurTimer();
+                setIsSearching(true);
+              }}
               blurOnSubmit={false}
               returnKeyType="search"
               onSubmitEditing={() => {
@@ -178,7 +192,14 @@ export const GlobalHeader = (props: any) => {
                   handleSelectResult(results[0]);
                 }
               }}
-              onBlur={() => setTimeout(() => setIsSearching(false), 200)} // Delay to allow onPress to fire
+              onBlur={() => {
+                cancelBlurTimer();
+                // Delay dismissal long enough for a result press to complete.
+                blurTimerRef.current = setTimeout(() => {
+                  blurTimerRef.current = null;
+                  setIsSearching(false);
+                }, 200);
+              }}
               style={{
                 backgroundColor: theme.colors.surface,
                 elevation: 0,

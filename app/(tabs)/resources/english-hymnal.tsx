@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useContext, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Divider, Text, TouchableRipple } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,13 @@ import { DESIGN_TOKENS } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
+import { scheduleCancellableAction } from '@/services/CancellableTimer';
+import {
+  type HymnListScrollFailure,
+  MAX_HYMN_SCROLL_RECOVERY_ATTEMPTS,
+  resolveExactHymnIndex,
+  resolveHymnScrollRecovery,
+} from '@/services/HymnalNavigation';
 import { normalizeSingleQueryParam } from '@/services/SearchQueryPolicy';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
 
@@ -70,13 +77,16 @@ export default function HymnalScreen() {
   const insets = useSafeAreaInsets();
   const { language } = useContext(LanguageContext);
   const { backTo, refresh, hymnNum, highlight } = useLocalSearchParams<{
-    backTo?: string;
-    refresh?: string;
-    hymnNum?: string;
-    highlight?: string;
+    backTo?: string | string[];
+    refresh?: string | string[];
+    hymnNum?: string | string[];
+    highlight?: string | string[];
   }>();
   const labels = uiLabels[language as keyof typeof uiLabels] || uiLabels.en;
   const flatListRef = useRef<FlatList>(null);
+  const targetHymnIndexRef = useRef<number | null>(null);
+  const scrollRetryCountRef = useRef(0);
+  const cancelScrollTimerRef = useRef<(() => void) | null>(null);
 
   const allHymns = useMemo(() => getSortedHymns('en'), []);
 
@@ -94,29 +104,61 @@ export default function HymnalScreen() {
     );
   }, [highlight, allHymns]);
 
+  const targetHymnIndex = useMemo(
+    () => resolveExactHymnIndex(hymnNum, displayHymns),
+    [hymnNum, displayHymns],
+  );
+  targetHymnIndexRef.current = targetHymnIndex;
+
+  const scheduleExactHymnScroll = useCallback(
+    (index: number, animated: boolean) => {
+      cancelScrollTimerRef.current?.();
+      cancelScrollTimerRef.current = scheduleCancellableAction(() => {
+        if (targetHymnIndexRef.current !== index) return;
+        flatListRef.current?.scrollToIndex({
+          index,
+          animated,
+          viewPosition: 0,
+        });
+      }, 100);
+    },
+    [],
+  );
+
   // Scroll to a specific hymn if requested via search params (hymnNum)
   useEffect(() => {
-    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    const safeHymnNumber = normalizeSingleQueryParam(hymnNum, 8);
-    if (safeHymnNumber && /^\d+$/.test(safeHymnNumber)) {
-      const index = displayHymns.findIndex(
-        (h) => h.number.toString() === safeHymnNumber,
-      );
-      if (index !== -1) {
-        scrollTimer = setTimeout(() => {
-          flatListRef.current?.scrollToIndex({
-            index,
-            animated: true,
-            viewPosition: 0,
-          });
-        }, 100);
-      }
-    }
+    scrollRetryCountRef.current = 0;
+    if (targetHymnIndex !== null) scheduleExactHymnScroll(targetHymnIndex, true);
 
     return () => {
-      if (scrollTimer !== null) clearTimeout(scrollTimer);
+      cancelScrollTimerRef.current?.();
+      cancelScrollTimerRef.current = null;
     };
-  }, [hymnNum, displayHymns]);
+  }, [scheduleExactHymnScroll, targetHymnIndex]);
+
+  const recoverFailedHymnScroll = useCallback(
+    (failure: HymnListScrollFailure) => {
+      const recovery = resolveHymnScrollRecovery(
+        failure,
+        targetHymnIndexRef.current,
+        displayHymns.length,
+      );
+      if (
+        !recovery ||
+        scrollRetryCountRef.current >= MAX_HYMN_SCROLL_RECOVERY_ATTEMPTS
+      ) {
+        return;
+      }
+
+      scrollRetryCountRef.current += 1;
+      flatListRef.current?.scrollToOffset({
+        offset: recovery.offset,
+        animated: false,
+      });
+      scheduleExactHymnScroll(recovery.index, false);
+    },
+    [displayHymns.length, scheduleExactHymnScroll],
+  );
 
   const renderHymnItem = ({ item }: { item: HydratedHymn }) => {
     return (
@@ -268,6 +310,7 @@ export default function HymnalScreen() {
         data={displayHymns}
         keyExtractor={(item) => item.number.toString()}
         renderItem={renderHymnItem}
+        onScrollToIndexFailed={recoverFailedHymnScroll}
         contentContainerStyle={[
           NavigationStyles.contentContainer,
           { paddingTop: 8, paddingBottom: insets.bottom + 50 },

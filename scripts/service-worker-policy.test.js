@@ -1,10 +1,18 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const {
+  isOwnedCacheName,
   isCacheablePath,
   isCacheableResponse,
   isSameOriginRequest,
 } = require('../public/sw');
+
+test('service worker owns only its versioned cache namespace', () => {
+  assert.equal(isOwnedCacheName('sda-church-v0.22.0'), true);
+  assert.equal(isOwnedCacheName('sda-church-v0.23.0'), true);
+  assert.equal(isOwnedCacheName('another-app-v1'), false);
+  assert.equal(isOwnedCacheName('sda-church-assets'), false);
+});
 
 function response({ ok = true, type = 'basic', cacheControl = '' } = {}) {
   return {

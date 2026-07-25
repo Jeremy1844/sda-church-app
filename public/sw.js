@@ -2,7 +2,8 @@
 // This controls a pop-up notification to users when a new version of the app is available for install
 // DO NOT EDIT THIS MANUALLY, as it is verified by the release quality gate.
 const VERSION = '0.23.0';
-const CACHE_NAME = `sda-church-v${VERSION}`;
+const CACHE_PREFIX = 'sda-church-v';
+const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const APP_BASE_PATH = '/sda-church-app';
 const PRECACHE_URLS = [];
 const NEVER_CACHE_PATH_PREFIXES = [
@@ -16,6 +17,10 @@ const NEVER_CACHE_PATH_PREFIXES = [
 
 function isSameOriginRequest(requestUrl, workerOrigin) {
   return new URL(requestUrl).origin === workerOrigin;
+}
+
+function isOwnedCacheName(cacheName) {
+  return cacheName.startsWith(CACHE_PREFIX);
 }
 
 function isCacheablePath(pathname) {
@@ -51,7 +56,11 @@ if (typeof self !== 'undefined') {
         self.clients.claim(),
         caches.keys().then((keys) =>
           Promise.all(
-            keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : undefined)),
+            keys.map((key) =>
+              isOwnedCacheName(key) && key !== CACHE_NAME
+                ? caches.delete(key)
+                : undefined,
+            ),
           ),
         ),
       ]),
@@ -77,12 +86,13 @@ if (typeof self !== 'undefined') {
           return response;
         })
         .catch(async () => {
-          const exactMatch = await caches.match(event.request);
+          const cache = await caches.open(CACHE_NAME);
+          const exactMatch = await cache.match(event.request);
           if (exactMatch) return exactMatch;
           if (event.request.mode === 'navigate') {
             return (
-              (await caches.match(`${APP_BASE_PATH}/`)) ||
-              (await caches.match(`${APP_BASE_PATH}/index.html`)) ||
+              (await cache.match(`${APP_BASE_PATH}/`)) ||
+              (await cache.match(`${APP_BASE_PATH}/index.html`)) ||
               Response.error()
             );
           }
@@ -103,6 +113,7 @@ if (typeof module !== 'undefined') {
     NEVER_CACHE_PATH_PREFIXES,
     APP_BASE_PATH,
     PRECACHE_URLS,
+    isOwnedCacheName,
     isCacheablePath,
     isCacheableResponse,
     isSameOriginRequest,

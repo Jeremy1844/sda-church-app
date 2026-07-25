@@ -19,8 +19,12 @@ test('service-worker cache is limited to same-origin public requests', () => {
   assert.equal(isSameOriginRequest('https://bible.example/api.json', 'https://example.test'), false);
   assert.equal(isCacheablePath('/sda-church-app/data/latest-activity.json'), true);
   assert.equal(isCacheablePath('/api/private'), false);
+  assert.equal(isCacheablePath('/sda-church-app/api/private'), false);
   assert.equal(isCacheablePath('/prayer'), false);
+  assert.equal(isCacheablePath('/sda-church-app/prayer/request'), false);
   assert.equal(isCacheablePath('/oauth/callback'), false);
+  assert.equal(isCacheablePath('/sda-church-app/schedule/publication'), false);
+  assert.equal(isCacheablePath('/another-app/api/public.json'), true);
 });
 
 test('service-worker cache respects response privacy directives', () => {

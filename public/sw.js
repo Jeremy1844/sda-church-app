@@ -19,8 +19,15 @@ function isSameOriginRequest(requestUrl, workerOrigin) {
 }
 
 function isCacheablePath(pathname) {
+  const appRelativePath =
+    pathname === APP_BASE_PATH
+      ? '/'
+      : pathname.startsWith(`${APP_BASE_PATH}/`)
+        ? pathname.slice(APP_BASE_PATH.length)
+        : pathname;
   return !NEVER_CACHE_PATH_PREFIXES.some(
-    (prefix) => pathname === prefix.slice(0, -1) || pathname.startsWith(prefix),
+    (prefix) =>
+      appRelativePath === prefix.slice(0, -1) || appRelativePath.startsWith(prefix),
   );
 }
 

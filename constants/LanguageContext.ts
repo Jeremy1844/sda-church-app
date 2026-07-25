@@ -1,8 +1,10 @@
 import { createContext } from "react";
+import {
+  DEFAULT_LANG,
+  SupportedLanguage,
+} from './LocaleRegistry';
 
-export type SupportedLanguage = "en" | "zh" | "zh-cn" | "es";
-
-export const DEFAULT_LANG = "en";
+export { DEFAULT_LANG, SupportedLanguage } from './LocaleRegistry';
 
 export const LanguageContext = createContext({
   language: DEFAULT_LANG as SupportedLanguage,

@@ -4,6 +4,7 @@ import {
   LanguageContext,
   SupportedLanguage,
 } from '@/constants/LanguageContext';
+import { resolveSupportedLanguage } from '@/constants/LocaleRegistry';
 import {
   AppTheme,
   getAppTheme,
@@ -42,26 +43,7 @@ export const unstable_settings = {
 
 const getSystemLanguage = (): SupportedLanguage => {
   const [primaryLocale] = Localization.getLocales();
-
-  if (!primaryLocale?.languageCode) {
-    return DEFAULT_LANG;
-  }
-
-  const { languageCode, languageTag } = primaryLocale;
-  const scriptCode = (primaryLocale as any).scriptCode;
-
-  // Handle Chinese variants (Simplified vs Traditional mapping)
-  if (languageCode === 'zh') {
-    // Prioritize scriptCode (standard for modern OS), fall back to region tags
-    const isSimplified = scriptCode === 'Hans' || /hans|cn|sg|my/i.test(languageTag);
-    return isSimplified ? 'zh-cn' : 'zh';
-  }
-
-  const SUPPORTED_MAP: Partial<Record<string, SupportedLanguage>> = {
-    es: 'es',
-    en: 'en',
-  };
-  return SUPPORTED_MAP[languageCode] ?? 'en';
+  return resolveSupportedLanguage(primaryLocale);
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.

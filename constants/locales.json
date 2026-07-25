@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "fallback": "en",
+  "supported": [
+    {
+      "id": "en",
+      "bcp47": ["en"],
+      "script": "Latn",
+      "textDirection": "ltr",
+      "contentReview": "existing-production-copy"
+    },
+    {
+      "id": "zh",
+      "bcp47": ["zh-Hant", "zh-TW", "zh-HK", "zh-MO"],
+      "script": "Hant",
+      "textDirection": "ltr",
+      "contentReview": "existing-production-copy"
+    },
+    {
+      "id": "zh-cn",
+      "bcp47": ["zh-Hans", "zh-CN", "zh-SG", "zh-MY"],
+      "script": "Hans",
+      "textDirection": "ltr",
+      "contentReview": "existing-production-copy"
+    },
+    {
+      "id": "es",
+      "bcp47": ["es"],
+      "script": "Latn",
+      "textDirection": "ltr",
+      "contentReview": "existing-production-copy"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "id",
+      "script": "Latn",
+      "status": "blocked-pending-complete-human-review-and-bible-license"
+    },
+    {
+      "id": "de",
+      "script": "Latn",
+      "status": "blocked-pending-complete-human-review-and-bible-license"
+    },
+    {
+      "id": "ja",
+      "script": "Jpan",
+      "status": "blocked-pending-font-review-human-review-and-bible-license"
+    },
+    {
+      "id": "bo",
+      "script": "Tibt",
+      "status": "blocked-pending-font-review-human-review-and-bible-license"
+    }
+  ]
+}

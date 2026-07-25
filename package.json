@@ -15,7 +15,7 @@
     "deploy": "node public/deploy-web.js",
     "doctor": "expo-doctor",
     "refresh:latest-activity": "node scripts/refresh-latest-activity.mjs",
-    "test": "node --test \"scripts/*.test.*\"",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"scripts/*.test.*\"",
     "test:version": "node --test scripts/sync-version.test.js",
     "typecheck": "tsc --noEmit",
     "version:check": "node public/sync-version.js --check",

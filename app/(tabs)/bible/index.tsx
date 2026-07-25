@@ -31,6 +31,7 @@ import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import * as SearchTerms from '@/constants/SearchTerms';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
+import { getAdjacentChapter } from '@/services/BibleNavigation';
 import { NavigationStyles } from '@/styles/NavigationStyles';
 import { ReaderStyles } from '@/styles/ReaderStyles';
 
@@ -628,32 +629,21 @@ export default function BibleScreen() {
    */
   const navigateToChapter = (direction: 'prev' | 'next') => {
     if (!book || books.length === 0) return;
-    const currentBookIdx = books.findIndex(
-      (b: BibleService.TranslationBook) => b.id === book.id,
+    const target = getAdjacentChapter(
+      books,
+      { bookId: book.id, chapter: chapterNum },
+      direction,
     );
-    if (currentBookIdx === -1) return;
+    if (!target) return;
 
     if (isPlaying) {
       setShouldAutoPlay(true);
     }
 
-    if (direction === 'next') {
-      if (chapterNum < book.numberOfChapters) {
-        setChapterNum(chapterNum + 1);
-      } else if (currentBookIdx < books.length - 1) {
-        const nextBook = books[currentBookIdx + 1];
-        setBook(nextBook);
-        setChapterNum(1);
-      }
-    } else {
-      if (chapterNum > 1) {
-        setChapterNum(chapterNum - 1);
-      } else if (currentBookIdx > 0) {
-        const prevBook = books[currentBookIdx - 1];
-        setBook(prevBook);
-        setChapterNum(prevBook.numberOfChapters);
-      }
-    }
+    const targetBook = books.find(({ id }) => id === target.bookId);
+    if (!targetBook) return;
+    setBook(targetBook);
+    setChapterNum(target.chapter);
   };
 
   /**

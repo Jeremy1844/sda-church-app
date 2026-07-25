@@ -2,6 +2,7 @@ import { getSortedHymns } from '@/constants/EnglishHymnal';
 import { SupportedLanguage } from '@/constants/LanguageContext';
 import { ROUTES, SearchRoute } from '@/constants/Routes';
 import * as BibleService from '@/services/BibleService';
+import { parseChapterAndVerse } from '@/services/BibleNavigation';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export interface SearchableItem {
@@ -53,8 +54,10 @@ export const resolveBibleReference = (query: string, language: string) => {
 
   if (match) {
     bookPart = match[1].trim();
-    chapter = parseInt(match[2], 10);
-    verse = match[3] ? parseInt(match[3], 10) : undefined;
+    const coordinates = parseChapterAndVerse(match[2], match[3]);
+    if (!coordinates) return null;
+    chapter = coordinates.chapter;
+    verse = coordinates.verse;
   } else {
     // If no numbers are present, treat the entire query as a potential book name
     bookPart = q;

@@ -35,10 +35,23 @@ import * as SearchTerms from '@/constants/SearchTerms';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
-import { getAdjacentChapter } from '@/services/BibleNavigation';
 import {
+  clampChapterNumber,
+  getAdjacentChapter,
+  getChapterCoordinateIfInBounds,
+  parsePositiveSafeInteger,
+} from '@/services/BibleNavigation';
+import {
+  scheduleCancellableAction,
+  scheduleCancellableRetry,
+} from '@/services/CancellableTimer';
+import {
+  canRunChapterAction,
   canApplyChapterResponse,
+  chapterResponseContainsVerse,
   isAbortError,
+  isSameChapterRequest,
+  type BibleChapterRequest,
 } from '@/services/BibleRequestIntegrity';
 import { createVerseRenderPlan } from '@/services/BibleRendering';
 import { helloAoBibleRepository } from '@/services/BibleRepository';
@@ -195,6 +208,21 @@ export default function BibleScreen() {
   const [chapterData, setChapterData] =
     useState<BibleService.TranslationBookChapter | null>(null);
   const [loading, setLoading] = useState(false);
+  const selectionCoordinate: BibleChapterRequest | null = book
+    ? {
+        translationId: supportedTranslation.id,
+        bookId: book.id,
+        chapter: chapterNum,
+      }
+    : null;
+  const selectionCoordinateRef = useRef<BibleChapterRequest | null>(
+    selectionCoordinate,
+  );
+  const chapterDataRef = useRef<BibleService.TranslationBookChapter | null>(
+    chapterData,
+  );
+  selectionCoordinateRef.current = selectionCoordinate;
+  chapterDataRef.current = chapterData;
   const appliedQuery = useRef<string | null>(null);
   const appliedRefresh = useRef<string | null>(null);
 
@@ -251,7 +279,8 @@ export default function BibleScreen() {
           if (trans) setSupportedTranslation(trans);
         }
         if (savedBookId) initialBookId.current = savedBookId;
-        if (savedChap) setChapterNum(parseInt(savedChap, 10));
+        const savedChapter = parsePositiveSafeInteger(savedChap);
+        if (savedChapter !== null) setChapterNum(savedChapter);
       } catch (e) {
         console.error('Failed to load Bible selection:', e);
       } finally {
@@ -290,6 +319,7 @@ export default function BibleScreen() {
       }
     }
 
+    let requestedBook = book;
     if (paramBookId) {
       // If the book is already in our current 'books' list, we can set it immediately.
       // Otherwise, we set initialBookId so the fetchBooks effect picks it up.
@@ -297,6 +327,7 @@ export default function BibleScreen() {
         (b: BibleService.TranslationBook) => b.id === paramBookId,
       );
       if (matchingBook) {
+        requestedBook = matchingBook;
         if (matchingBook.id !== book?.id) {
           setBook(matchingBook);
         }
@@ -306,9 +337,12 @@ export default function BibleScreen() {
     }
 
     if (paramChapter) {
-      const chap = parseInt(paramChapter, 10);
-      if (!isNaN(chap) && chap !== chapterNum) {
-        setChapterNum(chap);
+      const parsedChapter = parsePositiveSafeInteger(paramChapter);
+      if (parsedChapter !== null) {
+        const nextChapter = requestedBook
+          ? clampChapterNumber(parsedChapter, requestedBook.numberOfChapters)
+          : parsedChapter;
+        if (nextChapter !== chapterNum) setChapterNum(nextChapter);
       }
     }
   }, [
@@ -337,11 +371,10 @@ export default function BibleScreen() {
         const matchingBook = books.find(
           (b: BibleService.TranslationBook) => b.id === ref.bookId,
         );
-        if (matchingBook) {
+        const target = getChapterCoordinateIfInBounds(matchingBook, ref.chapter);
+        if (matchingBook && target) {
           setBook(matchingBook);
-          if (ref.chapter <= matchingBook.numberOfChapters) {
-            setChapterNum(ref.chapter);
-          }
+          setChapterNum(target.chapter);
         }
       }
       appliedQuery.current = paramQuery;
@@ -351,44 +384,63 @@ export default function BibleScreen() {
 
   // Scroll to verse if specified in query
   useEffect(() => {
-    if (paramQuery && chapterData && !loading) {
-      const ref = SearchTerms.resolveBibleReference(paramQuery, language);
-      if (ref && ref.verse) {
+    if (!paramQuery || !chapterData || loading || !selectionCoordinate) return;
+
+    const ref = SearchTerms.resolveBibleReference(paramQuery, language);
+    if (!ref?.verse) return;
+
+    const requestedCoordinate: BibleChapterRequest = {
+      translationId: selectionCoordinate.translationId,
+      bookId: ref.bookId,
+      chapter: ref.chapter,
+    };
+    if (
+      !isSameChapterRequest(requestedCoordinate, selectionCoordinate) ||
+      !canRunChapterAction(
+        true,
+        requestedCoordinate,
+        selectionCoordinate,
+        chapterData,
+      ) ||
+      !chapterResponseContainsVerse(chapterData, ref.verse)
+    ) {
+      return;
+    }
+
+    // Layout positions can arrive after the data commit. This retry owns each
+    // recursively-created timer and revalidates live coordinates before scrolling.
+    return scheduleCancellableRetry(
+      () => {
         if (
-          ref.bookId === book?.id &&
-          ref.chapter === chapterNum &&
-          versePositions.current[ref.verse] !== undefined
+          !canRunChapterAction(
+            true,
+            requestedCoordinate,
+            selectionCoordinateRef.current,
+            chapterDataRef.current,
+          ) ||
+          !chapterResponseContainsVerse(chapterDataRef.current, ref.verse!)
         ) {
-          scrollRef.current?.scrollTo({
-            y: versePositions.current[ref.verse!] - 20,
-            animated: true,
-          });
-          return;
+          return true;
         }
 
-        // If positions aren't ready (common when navigating from other screens),
-        // use a retry mechanism to wait for the layout engine to settle.
-        let attempts = 0;
-        const checkAndScroll = () => {
-          if (
-            ref.bookId === book?.id &&
-            ref.chapter === chapterNum &&
-            versePositions.current[ref.verse!] !== undefined
-          ) {
-            scrollRef.current?.scrollTo({
-              y: versePositions.current[ref.verse!] - 20,
-              animated: true,
-            });
-          } else if (attempts < 10) {
-            attempts++;
-            setTimeout(checkAndScroll, 100);
-          }
-        };
-        const timer = setTimeout(checkAndScroll, 100);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [chapterData, loading, paramQuery, chapterNum, paramRefresh]);
+        const verseY = versePositions.current[ref.verse!];
+        if (verseY === undefined) return false;
+        scrollRef.current?.scrollTo({ y: verseY - 20, animated: true });
+        return true;
+      },
+      100,
+      10,
+    );
+  }, [
+    book?.id,
+    chapterData,
+    chapterNum,
+    language,
+    loading,
+    paramQuery,
+    paramRefresh,
+    supportedTranslation.id,
+  ]);
 
   // Keep the Bible dock visible at the bottom of the screen at all times.
   // We only animate the height so it "drops" down to the bottom when the tab bar hides.
@@ -410,79 +462,216 @@ export default function BibleScreen() {
   const audioPlayer = useAudioPlayer(null);
   const audioStatus = useAudioPlayerStatus(audioPlayer);
   const loadedAudioUrl = useRef<string | null>(null);
+  const loadedAudioCoordinate = useRef<BibleChapterRequest | null>(null);
   const handledFinishedAudioUrl = useRef<string | null>(null);
+  const finishedEventArmed = useRef(false);
+  const pendingAutoPlayTimerCancel = useRef<(() => void) | null>(null);
   const isPlaying = audioStatus.playing;
-  const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
+  const [pendingAutoPlay, setPendingAutoPlay] =
+    useState<BibleChapterRequest | null>(null);
+
+  const playAudioForChapter = (
+    expectedCoordinate: BibleChapterRequest,
+    audioUrl: string,
+  ) => {
+    if (
+      !canRunChapterAction(
+        true,
+        expectedCoordinate,
+        selectionCoordinateRef.current,
+        chapterDataRef.current,
+      )
+    ) {
+      return false;
+    }
+
+    try {
+      if (
+        loadedAudioUrl.current !== audioUrl ||
+        !isSameChapterRequest(loadedAudioCoordinate.current, expectedCoordinate)
+      ) {
+        audioPlayer.pause();
+        audioPlayer.replace(audioUrl);
+        loadedAudioUrl.current = audioUrl;
+        loadedAudioCoordinate.current = expectedCoordinate;
+      }
+      finishedEventArmed.current = false;
+      handledFinishedAudioUrl.current = null;
+      audioPlayer.play();
+      return true;
+    } catch (e) {
+      console.error('Audio playback error:', e);
+      return false;
+    }
+  };
+
+  // A selected chapter exclusively owns its audio source. Changing coordinates
+  // immediately stops and unloads the old source, while an exact pending intent can
+  // survive the transition and resume after the target chapter has loaded.
+  useEffect(() => {
+    try {
+      audioPlayer.pause();
+      if (loadedAudioUrl.current) audioPlayer.replace(null);
+    } catch (e) {
+      console.error('Audio cleanup error:', e);
+    }
+    loadedAudioUrl.current = null;
+    loadedAudioCoordinate.current = null;
+    handledFinishedAudioUrl.current = null;
+    finishedEventArmed.current = false;
+    setPendingAutoPlay((pending) =>
+      isSameChapterRequest(pending, selectionCoordinateRef.current) ? pending : null,
+    );
+  }, [audioPlayer, supportedTranslation.id, book?.id, chapterNum]);
+
+  // Query/language transitions must not inherit a delayed autoplay request, even
+  // when they happen to resolve back to the same chapter coordinates.
+  useEffect(() => {
+    setPendingAutoPlay(null);
+  }, [language, paramQuery, paramRefresh]);
+
+  useEffect(
+    () => () => {
+      try {
+        audioPlayer.pause();
+        if (loadedAudioUrl.current) audioPlayer.replace(null);
+      } catch {
+        // The player hook may already be releasing its native resource on unmount.
+      }
+      loadedAudioUrl.current = null;
+      loadedAudioCoordinate.current = null;
+      finishedEventArmed.current = false;
+    },
+    [audioPlayer],
+  );
 
   useEffect(() => {
+    if (!audioStatus.didJustFinish) {
+      finishedEventArmed.current = true;
+      return;
+    }
+
     const finishedAudioUrl = loadedAudioUrl.current;
+    const finishedCoordinate = loadedAudioCoordinate.current;
     if (
       audioStatus.isLoaded &&
       audioStatus.didJustFinish &&
       finishedAudioUrl &&
+      finishedCoordinate &&
+      finishedEventArmed.current &&
+      canRunChapterAction(
+        true,
+        finishedCoordinate,
+        selectionCoordinateRef.current,
+        chapterDataRef.current,
+      ) &&
       handledFinishedAudioUrl.current !== finishedAudioUrl
     ) {
+      finishedEventArmed.current = false;
       handledFinishedAudioUrl.current = finishedAudioUrl;
       if (!isLastChapter) {
-        // Signal that the next chapter should start playing automatically
-        setShouldAutoPlay(true);
-        navigateToChapter('next');
+        navigateToChapter('next', true);
       }
     }
-  }, [audioStatus.didJustFinish, audioStatus.isLoaded, isLastChapter]);
+  }, [
+    audioStatus.didJustFinish,
+    audioStatus.isLoaded,
+    audioStatus.playing,
+    isLastChapter,
+  ]);
 
-  const toggleAudio = async () => {
+  const toggleAudio = () => {
+    // A manual play/pause choice supersedes any queued continuation immediately;
+    // do not wait for the state update/effect cleanup to cancel its timer.
+    pendingAutoPlayTimerCancel.current?.();
+    pendingAutoPlayTimerCancel.current = null;
+    setPendingAutoPlay(null);
+
+    const currentCoordinate = selectionCoordinateRef.current;
     const audioLinks = chapterData?.thisChapterAudioLinks;
-    if (!audioLinks || Object.keys(audioLinks).length === 0) return;
+    if (
+      !currentCoordinate ||
+      !audioLinks ||
+      Object.keys(audioLinks).length === 0 ||
+      !canRunChapterAction(true, currentCoordinate, currentCoordinate, chapterData)
+    ) {
+      return;
+    }
 
     // Get the first available reader's audio URL
     const audioUrl = Object.values(audioLinks)[0];
+    if (typeof audioUrl !== 'string' || !audioUrl) return;
 
-    try {
-      if (isPlaying) {
+    if (
+      isPlaying &&
+      loadedAudioUrl.current === audioUrl &&
+      isSameChapterRequest(loadedAudioCoordinate.current, currentCoordinate)
+    ) {
+      try {
         audioPlayer.pause();
-      } else {
-        if (loadedAudioUrl.current !== audioUrl) {
-          audioPlayer.replace(audioUrl as string);
-          loadedAudioUrl.current = audioUrl as string;
-          handledFinishedAudioUrl.current = null;
-        }
-        audioPlayer.play();
+      } catch (e) {
+        console.error('Audio playback error:', e);
       }
-    } catch (e) {
-      console.error('Audio playback error:', e);
+      return;
     }
+
+    playAudioForChapter(currentCoordinate, audioUrl);
   };
 
   useEffect(() => {
-    const autoPlayNext = async () => {
-      setShouldAutoPlay(false);
-      setTimeout(() => toggleAudio(), 500);
-    };
-
-    // Only trigger auto-play if:
-    // 1. Auto-play was requested (shouldAutoPlay is true)
-    // 2. We are not in the middle of a network request (!loading)
-    // 3. The loaded chapter data matches the user's current selection (translation/book/chapter)
-    // This prevents a race condition where the effect fires for the "old" chapter
-    // before the new data has started loading.
+    if (!pendingAutoPlay || loading || !chapterData || !selectionCoordinate) return;
     if (
-      shouldAutoPlay &&
-      !loading &&
-      chapterData &&
-      chapterData.chapter.number === chapterNum &&
-      chapterData.book.id === book?.id &&
-      chapterData.translation.id === supportedTranslation.id &&
-      chapterData.thisChapterAudioLinks
+      !canRunChapterAction(
+        true,
+        pendingAutoPlay,
+        selectionCoordinate,
+        chapterData,
+      )
     ) {
-      autoPlayNext();
+      return;
     }
+
+    const audioUrl = Object.values(chapterData.thisChapterAudioLinks ?? {})[0];
+    if (typeof audioUrl !== 'string' || !audioUrl) {
+      setPendingAutoPlay((pending) =>
+        isSameChapterRequest(pending, pendingAutoPlay) ? null : pending,
+      );
+      return;
+    }
+
+    const expectedCoordinate = pendingAutoPlay;
+    const cancel = scheduleCancellableAction(() => {
+      if (
+        canRunChapterAction(
+          true,
+          expectedCoordinate,
+          selectionCoordinateRef.current,
+          chapterDataRef.current,
+        )
+      ) {
+        playAudioForChapter(expectedCoordinate, audioUrl);
+      }
+      setPendingAutoPlay((pending) =>
+        isSameChapterRequest(pending, expectedCoordinate) ? null : pending,
+      );
+    }, 500);
+    pendingAutoPlayTimerCancel.current = cancel;
+
+    return () => {
+      cancel();
+      if (pendingAutoPlayTimerCancel.current === cancel) {
+        pendingAutoPlayTimerCancel.current = null;
+      }
+    };
   }, [
-    chapterData,
-    loading,
-    shouldAutoPlay,
-    chapterNum,
     book?.id,
+    chapterData,
+    chapterNum,
+    language,
+    loading,
+    paramQuery,
+    paramRefresh,
+    pendingAutoPlay,
     supportedTranslation.id,
   ]);
 
@@ -526,7 +715,9 @@ export default function BibleScreen() {
           if (matchingBook) {
             // If the book exists in the new translation, try to preserve the chapter.
             // We clamp it to 1 if the current number exceeds the new book's chapter count.
-            setChapterNum((prev) => (prev > matchingBook.numberOfChapters ? 1 : prev));
+            setChapterNum((prev) =>
+              clampChapterNumber(prev, matchingBook.numberOfChapters),
+            );
             return matchingBook;
           }
 
@@ -665,7 +856,10 @@ export default function BibleScreen() {
    * Navigates to the next or previous chapter.
    * Automatically handles transitioning between books (e.g., Matt 28 -> Mark 1).
    */
-  const navigateToChapter = (direction: 'prev' | 'next') => {
+  const navigateToChapter = (
+    direction: 'prev' | 'next',
+    forceAutoPlay = false,
+  ) => {
     if (!book || books.length === 0) return;
     const target = getAdjacentChapter(
       books,
@@ -674,12 +868,17 @@ export default function BibleScreen() {
     );
     if (!target) return;
 
-    if (isPlaying) {
-      setShouldAutoPlay(true);
-    }
-
     const targetBook = books.find(({ id }) => id === target.bookId);
     if (!targetBook) return;
+    if (forceAutoPlay || isPlaying) {
+      setPendingAutoPlay({
+        translationId: supportedTranslation.id,
+        bookId: target.bookId,
+        chapter: target.chapter,
+      });
+    } else {
+      setPendingAutoPlay(null);
+    }
     setBook(targetBook);
     setChapterNum(target.chapter);
   };
@@ -721,21 +920,18 @@ export default function BibleScreen() {
         ? SearchTerms.resolveBibleReference(paramQuery, language)
         : null;
       const isTargetingThisChapter =
-        ref && ref.bookId === book?.id && ref.chapter === chapterNum;
+        ref &&
+        ref.bookId === book?.id &&
+        ref.chapter === chapterNum &&
+        !!ref.verse &&
+        chapterResponseContainsVerse(chapterData, ref.verse);
 
       if (!isTargetingThisChapter) {
         scrollRef.current?.scrollTo({ y: 0, animated: false });
       }
     }
 
-    // Stop and release the current source when the chapter changes. The hook owns and
-    // releases the player itself when the reader unmounts.
     return () => {
-      if (loadedAudioUrl.current) {
-        audioPlayer.pause();
-        audioPlayer.replace(null);
-        loadedAudioUrl.current = null;
-      }
       // Always restore menus when leaving the reader
       updateMenuVisibility(true);
     };
@@ -1514,18 +1710,36 @@ export default function BibleScreen() {
                           : undefined
                       }
                       onPress={() => {
-                        // If audio is currently playing, ensure the new selection
-                        // starts playing automatically.
-                        if (isPlaying) {
-                          setShouldAutoPlay(true);
-                        }
                         if (lastActiveType === 'translation') {
+                          // The resulting book is resolved asynchronously for a new
+                          // translation, so do not carry an ambiguous autoplay intent.
+                          setPendingAutoPlay(null);
                           setSupportedTranslation(item as any);
                         } else if (lastActiveType === 'book') {
-                          setBook(item as any);
+                          const selectedBook = item as BibleService.TranslationBook;
+                          setPendingAutoPlay(
+                            isPlaying
+                              ? {
+                                  translationId: supportedTranslation.id,
+                                  bookId: selectedBook.id,
+                                  chapter: 1,
+                                }
+                              : null,
+                          );
+                          setBook(selectedBook);
                           setChapterNum(1);
                         } else if (lastActiveType === 'chapter') {
-                          setChapterNum(item as any);
+                          const selectedChapter = item as number;
+                          setPendingAutoPlay(
+                            isPlaying && book
+                              ? {
+                                  translationId: supportedTranslation.id,
+                                  bookId: book.id,
+                                  chapter: selectedChapter,
+                                }
+                              : null,
+                          );
+                          setChapterNum(selectedChapter);
                         }
                         closeModal();
                       }}

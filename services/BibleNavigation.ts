@@ -13,6 +13,45 @@ export interface BibleVerseCoordinate extends BibleChapterCoordinate {
   verse: number;
 }
 
+export function parsePositiveSafeInteger(value: string | null | undefined): number | null {
+  if (!value || !/^[1-9]\d*$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+export function parseChapterAndVerse(
+  chapterValue: string,
+  verseValue?: string,
+): { chapter: number; verse?: number } | null {
+  const chapter = parsePositiveSafeInteger(chapterValue);
+  const verse = verseValue === undefined ? undefined : parsePositiveSafeInteger(verseValue);
+  if (chapter === null || verse === null) return null;
+  return { chapter, verse };
+}
+
+export function clampChapterNumber(chapter: number, numberOfChapters: number): number {
+  if (!Number.isSafeInteger(numberOfChapters) || numberOfChapters < 1) return 1;
+  if (!Number.isSafeInteger(chapter) || chapter < 1) return 1;
+  return Math.min(chapter, numberOfChapters);
+}
+
+export function getChapterCoordinateIfInBounds(
+  book: BibleBookBoundary | null | undefined,
+  chapter: number,
+): BibleChapterCoordinate | null {
+  if (
+    !book ||
+    !Number.isSafeInteger(book.numberOfChapters) ||
+    book.numberOfChapters < 1 ||
+    !Number.isSafeInteger(chapter) ||
+    chapter < 1 ||
+    chapter > book.numberOfChapters
+  ) {
+    return null;
+  }
+  return { bookId: book.id, chapter };
+}
+
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9_-]{2,40}$/;
 
 export function getAdjacentChapter(

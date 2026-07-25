@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  clampChapterNumber,
   createStableVerseId,
   getAdjacentChapter,
+  getChapterCoordinateIfInBounds,
+  parseChapterAndVerse,
+  parsePositiveSafeInteger,
   parseStableVerseId,
 } from '../services/BibleNavigation.ts';
 
@@ -33,5 +37,33 @@ test('stable verse IDs round-trip and reject malformed coordinates', () => {
   assert.throws(
     () => createStableVerseId({ ...coordinate, bookId: 'PSA:9' }),
     /stable ASCII identifiers/,
+  );
+});
+
+test('reader coordinates accept only positive safe integers and clamp to book bounds', () => {
+  assert.equal(parsePositiveSafeInteger('1'), 1);
+  assert.equal(parsePositiveSafeInteger('150'), 150);
+  assert.equal(parsePositiveSafeInteger('0'), null);
+  assert.equal(parsePositiveSafeInteger('-1'), null);
+  assert.equal(parsePositiveSafeInteger('2abc'), null);
+  assert.equal(parsePositiveSafeInteger('9007199254740992'), null);
+  assert.deepEqual(parseChapterAndVerse('3', '16'), { chapter: 3, verse: 16 });
+  assert.deepEqual(parseChapterAndVerse('3'), { chapter: 3, verse: undefined });
+  assert.equal(parseChapterAndVerse('0', '1'), null);
+  assert.equal(parseChapterAndVerse('1', '0'), null);
+  assert.equal(parseChapterAndVerse('1', '9007199254740992'), null);
+
+  assert.equal(clampChapterNumber(0, 50), 1);
+  assert.equal(clampChapterNumber(51, 50), 50);
+  assert.equal(clampChapterNumber(25, 50), 25);
+  assert.equal(clampChapterNumber(Number.NaN, 50), 1);
+
+  assert.deepEqual(
+    getChapterCoordinateIfInBounds({ id: 'PSA', numberOfChapters: 150 }, 150),
+    { bookId: 'PSA', chapter: 150 },
+  );
+  assert.equal(
+    getChapterCoordinateIfInBounds({ id: 'JUD', numberOfChapters: 1 }, 2),
+    null,
   );
 });

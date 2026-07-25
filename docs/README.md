@@ -1,5 +1,8 @@
 # Technical Setup & Testing
 
+For the current cross-browser capability decisions and follow-up recommendations, see the
+[PWA Capability Audit](./PWA_CAPABILITY_AUDIT.md).
+
 ## Prerequisites
 
 - Node.js (LTS)

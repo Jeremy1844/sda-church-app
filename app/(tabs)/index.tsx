@@ -20,7 +20,9 @@ import {
   LatestActivity,
 } from '@/services/LatestActivityService';
 import {
+  formatLocalCalendarDate,
   normalizeSunsetCoordinates,
+  parseSunsetApiPayload,
   selectSunsetLocation,
   SunsetCoordinates,
   SUNSET_LOCATION_PRIVACY_COPY,
@@ -190,6 +192,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const controller = new AbortController();
+    setSunsets({ fri: null, sat: null });
     fetchLatestActivity(controller.signal)
       .then(setLatestActivity)
       .catch((error) => {
@@ -265,7 +268,7 @@ export default function HomeScreen() {
         // conversions before we apply our longitude-based shift.
         t.setDate(t.getDate() + (d - t.getDay()));
         t.setHours(12, 0, 0, 0);
-        return t.toISOString().split('T')[0];
+        return formatLocalCalendarDate(t);
       };
 
       try {
@@ -273,16 +276,27 @@ export default function HomeScreen() {
           fetch(getSunsetApiUrl(lat, lng, getDayDate(5)), requestOptions),
           fetch(getSunsetApiUrl(lat, lng, getDayDate(6)), requestOptions),
         ]);
+        if (!fRes.ok || !sRes.ok) {
+          throw new Error('Sunset provider returned an unsuccessful response.');
+        }
         const fData = await fRes.json();
         const sData = await sRes.json();
+        const fri = parseSunsetApiPayload(fData);
+        const sat = parseSunsetApiPayload(sData);
+        if (!fri || !sat) {
+          throw new Error('Sunset provider returned malformed data.');
+        }
+        if (controller.signal.aborted) return;
 
-        setSunsets({
-          fri: fData.results?.sunset ? new Date(fData.results.sunset) : null,
-          sat: sData.results?.sunset ? new Date(sData.results.sunset) : null,
-        });
+        setSunsets({ fri, sat });
       } catch (e) {
         if ((e as Error)?.name !== 'AbortError') {
           console.warn('Failed to fetch sunset times:', e);
+          setSunsets({ fri: null, sat: null });
+          if (location.source === 'device') {
+            setUserCoords(null);
+            setLocationStatus('unavailable');
+          }
         }
       }
     };

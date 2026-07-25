@@ -10,6 +10,9 @@ export type SunsetLocationSelection = Readonly<{
 
 export const SUNSET_LOCATION_PROVIDER_HOST = 'api.sunrise-sunset.org';
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /**
  * This privacy disclosure is intentionally English-only until fluent reviewers approve
  * Chinese and Spanish translations. It must be shown before the browser permission prompt.
@@ -49,6 +52,26 @@ export function normalizeSunsetCoordinates(
   }
 
   return Object.freeze({ lat, lng });
+}
+
+export function formatLocalCalendarDate(date: Date): string {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    throw new Error('Sunset date is invalid.');
+  }
+
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function parseSunsetApiPayload(value: unknown): Date | null {
+  if (!isRecord(value) || value.status !== 'OK' || !isRecord(value.results)) {
+    return null;
+  }
+
+  const { sunset } = value.results;
+  if (typeof sunset !== 'string' || sunset.length > 50) return null;
+  const timestamp = Date.parse(sunset);
+  return Number.isNaN(timestamp) ? null : new Date(timestamp);
 }
 
 /**

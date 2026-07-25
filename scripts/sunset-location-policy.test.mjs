@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import {
+  formatLocalCalendarDate,
   normalizeSunsetCoordinates,
+  parseSunsetApiPayload,
   selectSunsetLocation,
   SUNSET_LOCATION_PRIVACY_COPY,
   SUNSET_LOCATION_PROVIDER_HOST,
@@ -29,6 +31,25 @@ test('invalid browser coordinate results cannot displace the Elmhurst fallback',
   assert.equal(normalizeSunsetCoordinates(91, -73), null);
   assert.equal(normalizeSunsetCoordinates(40, -181), null);
   assert.equal(normalizeSunsetCoordinates('40', -73), null);
+});
+
+test('sunset API dates use local calendar fields instead of a UTC date shift', () => {
+  const localDate = new Date(2030, 0, 2, 12, 0, 0);
+  assert.equal(formatLocalCalendarDate(localDate), '2030-01-02');
+  assert.throws(() => formatLocalCalendarDate(new Date(Number.NaN)), /invalid/);
+});
+
+test('sunset API payload validation rejects HTTP-success error and malformed results', () => {
+  assert.equal(
+    parseSunsetApiPayload({
+      status: 'OK',
+      results: { sunset: '2030-01-02T22:15:00+00:00' },
+    })?.toISOString(),
+    '2030-01-02T22:15:00.000Z',
+  );
+  assert.equal(parseSunsetApiPayload({ status: 'INVALID_REQUEST', results: {} }), null);
+  assert.equal(parseSunsetApiPayload({ status: 'OK', results: { sunset: 'not-a-date' } }), null);
+  assert.equal(parseSunsetApiPayload({ status: 'OK' }), null);
 });
 
 test('pre-permission copy discloses the provider, coordinate transfer, and no app retention', () => {

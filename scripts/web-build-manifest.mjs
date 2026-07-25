@@ -8,7 +8,9 @@ export function selectPrecacheUrls(filePaths, basePath = '/sda-church-app') {
       (filePath) =>
         filePath.endsWith('.html') ||
         filePath.startsWith('_expo/') ||
+        filePath.startsWith('assets/') ||
         filePath === 'manifest.json' ||
+        filePath === 'favicon.ico' ||
         /^icon-(?:48x48|192x192|512x512)\.png$/.test(filePath) ||
         filePath === 'data/latest-activity.json',
     )

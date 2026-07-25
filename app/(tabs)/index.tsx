@@ -692,7 +692,7 @@ export default function HomeScreen() {
                 style={styles.activityCard}
               >
                 <Card.Cover
-                  source={{ uri: latestActivity.thumbnailUrl }}
+                  source={require('../../assets/images/youtube_art.png')}
                   accessibilityLabel={latestActivity.title}
                 />
                 <Card.Content style={styles.activityContent}>

@@ -15,9 +15,12 @@ The disclosure states that the current latitude and longitude are sent directly 
 `api.sunrise-sunset.org` to calculate sunset times. Device coordinates remain component
 state only: they are not written to AsyncStorage, browser storage, logs, analytics, or a
 service-worker cache. Requests containing device coordinates use `cache: 'no-store'` to
-avoid the browser HTTP cache. A user can immediately return to Elmhurst times. Denial,
-invalid coordinates, unsupported browsers, and request errors all retain Elmhurst as the
-complete fallback and expose retry/browser-settings guidance.
+avoid the browser HTTP cache. A user can immediately return to Elmhurst times. Geolocation
+denial/error, invalid coordinates, unsupported browsers, and reset select Elmhurst and
+expose retry/browser-settings guidance; they do not manufacture sunset data. A
+Sunrise-Sunset request or validation failure for either Elmhurst or device coordinates
+clears Sabbath/countdown claims and shows unavailable with retry. Elmhurst is complete
+only after its provider response is verified.
 
 ## Localization gate
 

@@ -15,19 +15,28 @@ export const ROUTES = {
   englishHymnal: '/resources/english-hymnal',
   hymnalSelection: '/resources/hymnal-selection',
   give: '/home/give',
+  discover: '/home/discover',
   aboutSda: '/home/about-sda',
   aboutChurch: '/home/about-my-church',
   team: '/home/team',
-  bulletin: '/home/bulletin',
-  events: '/home/events',
   baptism: '/home/baptism',
   worship: '/home/worship',
   fellowship: '/home/fellowship',
-  prayer: '/home/prayer',
 } as const;
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES];
 export type SearchRoute = AppRoute | `${AppRoute}?${string}`;
+
+const CANONICAL_ROUTE_VALUES = new Set<string>(Object.values(ROUTES));
+
+/**
+ * Route options can be populated from URL search parameters on web. Only exact internal
+ * destinations from the canonical registry may control a Back action.
+ */
+export function resolveSafeBackRoute(value: unknown): AppRoute | null {
+  if (typeof value !== 'string' || !CANONICAL_ROUTE_VALUES.has(value)) return null;
+  return value as AppRoute;
+}
 
 /**
  * Previously valid Community URLs retained only for existing bookmarks.
@@ -39,5 +48,5 @@ export const LEGACY_COMMUNITY_REDIRECTS = {
   '/community/baptism': ROUTES.baptism,
   '/community/worship': ROUTES.worship,
   '/community/fellowship': ROUTES.fellowship,
-  '/community/prayer': ROUTES.prayer,
+  '/community/prayer': ROUTES.home,
 } as const satisfies Record<string, AppRoute>;

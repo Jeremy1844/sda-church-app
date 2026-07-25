@@ -63,7 +63,7 @@ const legacyRedirects = new Map([
   ['app/community/baptism.tsx', 'ROUTES.baptism'],
   ['app/community/worship.tsx', 'ROUTES.worship'],
   ['app/community/fellowship.tsx', 'ROUTES.fellowship'],
-  ['app/community/prayer.tsx', 'ROUTES.prayer'],
+  ['app/community/prayer.tsx', 'ROUTES.home'],
 ]);
 
 for (const [relativePath, expectedTarget] of legacyRedirects) {

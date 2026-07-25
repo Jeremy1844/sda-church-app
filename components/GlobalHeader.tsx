@@ -9,7 +9,7 @@ import {
   resolveBibleReference,
   SearchableItem,
 } from '@/constants/SearchTerms';
-import { ROUTES } from '@/constants/Routes';
+import { resolveSafeBackRoute, ROUTES } from '@/constants/Routes';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { router, useSegments } from 'expo-router';
@@ -69,6 +69,7 @@ export const GlobalHeader = (props: any) => {
 
   const title = props.options?.title;
   const backTo = props.options?.backTo;
+  const safeBackRoute = resolveSafeBackRoute(backTo);
 
   const searchLabels =
     ALL_SEARCH_LABELS[language as keyof typeof ALL_SEARCH_LABELS] || ALL_SEARCH_LABELS.en;
@@ -143,8 +144,8 @@ export const GlobalHeader = (props: any) => {
         {isSubPage && (
           <Appbar.BackAction
             onPress={() => {
-              if (backTo) {
-                router.navigate(backTo as any);
+              if (safeBackRoute) {
+                router.navigate(safeBackRoute as any);
               } else if (segmentNames.includes('you')) {
                 router.navigate(ROUTES.you as any);
               } else if (segmentNames.includes('resources')) {

@@ -9,6 +9,10 @@ const rules = [
   { label: 'placeholder URL', pattern: /\.\.\.placeholder/i },
   { label: 'empty press handler', pattern: /onPress=\{\(\)\s*=>\s*\{\s*\}\}/ },
   { label: 'public TBD value', pattern: /["']TBD["']|\(TBD\)/ },
+  {
+    label: 'unfinished public availability copy',
+    pattern: /available here soon|stay tuned for upcoming|will appear here/i,
+  },
 ];
 
 function walk(directory) {

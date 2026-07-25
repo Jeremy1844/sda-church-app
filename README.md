@@ -129,11 +129,22 @@ tracked by this service.
 
 ### 4. External Services
 
-This application provides links to external platforms, such as YouTube, Spotify, and
-HymnsForWorship.org. When you interact with these links, you are subject to the privacy
-policies of those third-party providers. These services may collect data (such as IP
-addresses) as part of their standard operations. We do not have access to, nor do we
-store, any data collected by these external platforms.
+This application provides user-initiated links to external platforms, such as YouTube,
+Spotify, and HymnsForWorship.org. When you choose one of these links, you are subject to
+that provider's privacy policy. The app does not automatically load YouTube thumbnails;
+the latest-activity artwork bundled with the app is local.
+
+Bible content is retrieved automatically from `bible.helloao.org` when the Home or Bible
+screens need it. Those requests identify the translation and requested passage, book, or
+chapter. The provider also receives normal connection data, such as your IP address and
+browser information. The app does not add your name, email, device location, or other
+account information to Bible requests.
+
+Screens that display church photos request those public media files automatically from
+`assets.adventistconnect.org`. That provider receives the requested media path and normal
+connection data, such as your IP address and browser information. The app does not add
+account or location data to those media requests. We do not have access to, nor do we
+store, provider-side request logs for these services.
 
 ### 5. Sunset Times and Optional Location
 

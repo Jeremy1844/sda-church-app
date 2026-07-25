@@ -1,6 +1,8 @@
+import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
-import { NavigationStyles } from '@/styles/NavigationStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -17,6 +19,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
  */
 export default function PrivacyPolicyScreen() {
   const theme = useAppTheme();
+  const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
+  const styles = createStyles(textScale);
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
@@ -99,11 +104,22 @@ export default function PrivacyPolicyScreen() {
         variant="bodyMedium"
         style={[styles.bodyText, { color: theme.colors.onSurface }]}
       >
-        This application provides links to external platforms, such as YouTube, Spotify,
-        and HymnsForWorship.org. When you interact with these links, you are subject to
-        the privacy policies of those third-party providers. These services may collect
-        data (such as IP addresses) as part of their standard operations. We do not have
-        access to, nor do we store, any data collected by these external platforms.
+        This application provides user-initiated links to external platforms, such as
+        YouTube, Spotify, and HymnsForWorship.org. When you choose one of these links, you
+        are subject to that provider's privacy policy. The app does not automatically load
+        YouTube thumbnails; the latest-activity artwork bundled with the app is local.
+        {'\n\n'}
+        Bible content is retrieved automatically from bible.helloao.org when the Home or
+        Bible screens need it. Those requests identify the translation and requested
+        passage, book, or chapter. The provider also receives normal connection data, such
+        as your IP address and browser information. The app does not add your name, email,
+        device location, or other account information to Bible requests.
+        {'\n\n'}
+        Screens that display church photos request those public media files automatically
+        from assets.adventistconnect.org. That provider receives the requested media path
+        and normal connection data, such as your IP address and browser information. The
+        app does not add account or location data to those media requests. We do not have
+        access to, nor do we store, provider-side request logs for these services.
       </Text>
 
       <Text
@@ -132,9 +148,10 @@ export default function PrivacyPolicyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  title: { fontWeight: 'bold', marginBottom: 5 },
-  lastUpdated: { marginBottom: 20 },
-  sectionHeader: { fontWeight: 'bold', marginTop: 15, marginBottom: 5 },
-  bodyText: { lineHeight: 22 },
-});
+const createStyles = (textScale: TextScale) =>
+  StyleSheet.create({
+    title: { fontWeight: 'bold', marginBottom: 5 },
+    lastUpdated: { marginBottom: 20 },
+    sectionHeader: { fontWeight: 'bold', marginTop: 15, marginBottom: 5 },
+    bodyText: { lineHeight: scaleTypographyMetric(22, textScale) },
+  });

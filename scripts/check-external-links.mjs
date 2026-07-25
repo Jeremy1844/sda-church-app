@@ -4,15 +4,50 @@ import { fileURLToPath } from 'node:url';
 import { validateExternalLinks } from './external-link-policy.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = fs.readFileSync(path.join(repoRoot, 'constants', 'ExternalLinks.ts'), 'utf8');
+const runtimeSourceRoots = ['app', 'components', 'constants', 'services', 'styles'];
+const runtimeExtensions = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx']);
+
+function collectRuntimeSources(rootName, extensions = runtimeExtensions) {
+  const root = path.join(repoRoot, rootName);
+  const sources = [];
+  const pending = [root];
+  while (pending.length) {
+    const current = pending.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const absolutePath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        pending.push(absolutePath);
+      } else if (
+        extensions.has(path.extname(entry.name)) &&
+        !/\.(?:test|spec)\.[^.]+$/.test(entry.name)
+      ) {
+        sources.push({
+          fileName: path.relative(repoRoot, absolutePath).replaceAll('\\', '/'),
+          source: fs.readFileSync(absolutePath, 'utf8'),
+        });
+      }
+    }
+  }
+  return sources;
+}
+
+const sources = [
+  ...runtimeSourceRoots.flatMap((rootName) => collectRuntimeSources(rootName)),
+  ...collectRuntimeSources('public/data', new Set(['.json'])),
+];
 const policy = JSON.parse(
   fs.readFileSync(path.join(repoRoot, 'constants', 'external-host-policy.json'), 'utf8'),
 );
-const errors = validateExternalLinks(source, policy);
+const errors = validateExternalLinks(sources, policy);
 
 if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
 
-console.log('External-link policy check passed.');
+const inventory = policy.allowedHosts
+  .map(({ host, mode }) => `${host} (${mode})`)
+  .join(', ');
+console.log(
+  `External-link policy check passed across ${sources.length} runtime files: ${inventory}`,
+);

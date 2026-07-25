@@ -1,5 +1,6 @@
 import { usePwaInstall } from '@/constants/PwaInstallContext';
 import { LanguageContext } from '@/constants/LanguageContext';
+import { resolvePwaInstallGuidance } from '@/services/PwaInstallGuidance';
 import { useState, useContext } from 'react';
 import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
@@ -26,6 +27,9 @@ export const PwaInstallDialog = ({ onDismiss, visible }: PwaInstallDialogProps) 
   const { requestInstall, status } = usePwaInstall();
   const [requesting, setRequesting] = useState(false);
   const englishOnly = language !== 'en';
+  const manualGuidance = resolvePwaInstallGuidance(
+    typeof navigator === 'undefined' ? '' : navigator.userAgent,
+  );
 
   const handleInstall = async () => {
     setRequesting(true);
@@ -54,6 +58,18 @@ export const PwaInstallDialog = ({ onDismiss, visible }: PwaInstallDialogProps) 
               You can also open the browser menu or share controls and use an install or
               home-screen option if one is offered.
             </Text>
+          )}
+          {status !== 'not-applicable' && status !== 'standalone' && (
+            <>
+              <Text variant="titleSmall" style={{ marginTop: 16 }}>
+                {`Manual steps for ${manualGuidance.platform}`}
+              </Text>
+              {manualGuidance.steps.map((step, index) => (
+                <Text key={step} variant="bodyMedium" style={{ marginTop: 8 }}>
+                  {`${index + 1}. ${step}`}
+                </Text>
+              ))}
+            </>
           )}
         </Dialog.Content>
         <Dialog.Actions>

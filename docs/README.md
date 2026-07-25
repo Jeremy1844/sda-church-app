@@ -28,13 +28,14 @@ Make sure to fill out information specific to your church in
 
 ## Web & PWA Deployment (Primary Workflow)
 
-This application is primarily distributed as a Progressive Web App (PWA) to ensure maximum
-accessibility, instant updates, and zero distribution fees.
+This application is primarily designed for web/PWA delivery so users can access it without
+an app-store installation. Update timing, browser support, hosting cost, and installed-mode
+behavior still depend on the selected production host and platform.
 
 Originally, this app was conceptualized on native but that idea quickly proved difficult
 due to heavy App Store fees and compliance overhead, as well as technical development
 challenges. A copy of the original documentation is preserved
-[for reference](./legacy_README.md)
+[for reference](./OLD_README.md).
 
 ### Local Development
 
@@ -45,20 +46,17 @@ To start the app in a web browser for local testing (primarily to check for Netw
 npx expo start --web
 ```
 
-### Production Deployment (GitHub Pages)
+### Production Deployment (Maintainer Only)
 
-The project uses GitHub Pages for hosting. Running the deploy command builds the web
-assets and pushes them to the gh-pages branch.
+The repository contains a GitHub Pages publisher, but contributors must stop after the
+local quality gate and must not run `npm run deploy`. A release maintainer first confirms
+the canonical production URL and an approved merge to `main`; the deployment workflow
+then validates an unchanged locked tree, publishes it with the configured bot identity,
+and creates the immutable version tag only after publication succeeds.
 
-```bash
-npm run deploy
-```
-
-Once deployed, the app is live at: https://<username>.github.io/sda-church-app/
-
-Version changes are release-maintainer work. Contributors must not increment the version
-as part of deployment or reset versions after testing; see `CONTRIBUTING.md` for the
-single-bump release workflow.
+Version changes are also release-maintainer work. Contributors must not increment the
+version as part of deployment or reset versions after testing; see `CONTRIBUTING.md` for
+the single-bump release workflow.
 
 ### Mobile Installation
 
@@ -77,7 +75,7 @@ We have prioritized the PWA workflow over native distribution for several key re
 
 1. Zero Fees: Avoids the $99/year Apple Developer Program fee and the one-time Google Play
    fee.
-2. Instant Delivery: npm run deploy pushes updates instantly to all users without waiting
-   for multi-day store reviews.
+2. Web Delivery: an approved Pages release avoids app-store review, while service-worker
+   lifecycle and browser caching still control when an open or installed client updates.
 3. Development Simplicity: Native development, particularly on WSL, introduces significant
    networking complexity that can slow down project progress.

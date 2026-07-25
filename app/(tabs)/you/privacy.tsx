@@ -60,7 +60,7 @@ export default function PrivacyPolicyScreen() {
         style={[styles.bodyText, { color: theme.colors.onSurface }]}
       >
         This application values your privacy. We do not host, store, or manage any
-        personal identifiable information on our own servers. This page outlines how
+        personally identifiable information on our own servers. This page outlines how
         third-party services handle data to keep the application functional.
       </Text>
 

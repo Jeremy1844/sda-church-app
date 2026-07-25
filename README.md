@@ -3,11 +3,10 @@
 A React Native mobile application built with Expo for Seventh-day Adventist church
 community features.
 
-For latest production build, you may install app directly from browser
-
-https://codesammich.github.io/sda-church-app/
-
-on Safari (iOS) or Chrome (Android).
+`package.json` currently records
+`https://codesammich.github.io/sda-church-app/`. Treat that as a historical deployment
+reference, not as release authorization or a maintainer-approved canonical URL. The
+release maintainer must confirm and align the production URL before deployment.
 
 ## Table of Contents
 
@@ -111,7 +110,7 @@ permissions and restrictions.
 
 ### 1. Introduction
 
-This application values your privacy. We do not host, store, or manage any personal
+This application values your privacy. We do not host, store, or manage any personally
 identifiable information on our own servers. This section outlines how third-party
 services handle data to keep the application functional.
 

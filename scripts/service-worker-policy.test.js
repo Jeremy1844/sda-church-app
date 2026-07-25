@@ -6,9 +6,12 @@ const {
   isCacheableResponse,
   isExactBuildOwnedRequest,
   createPrecacheRequests,
+  createPublicBuildRequest,
   getCachedNavigationPath,
   isSafeNavigationPath,
   isSameOriginRequest,
+  isExactResponseForRequest,
+  precacheBuildAssets,
   validatePrecacheUrls,
 } = require('../public/sw');
 
@@ -123,10 +126,16 @@ test('install validates every precache URL and reloads the immutable shell', () 
 
   const requests = createPrecacheRequests(publicManifest, workerOrigin);
   assert.deepEqual(
-    requests.map(({ cache, credentials, url }) => ({ cache, credentials, url })),
+    requests.map(({ cache, credentials, redirect, url }) => ({
+      cache,
+      credentials,
+      redirect,
+      url,
+    })),
     publicManifest.map((url) => ({
       cache: 'reload',
-      credentials: 'same-origin',
+      credentials: 'omit',
+      redirect: 'error',
       url: `${workerOrigin}${url}`,
     })),
   );
@@ -143,6 +152,93 @@ test('install validates every precache URL and reloads the immutable shell', () 
       /invalid or duplicate|outside the public build manifest/,
     );
   }
+});
+
+test('precache validates every response before writing any public asset', async () => {
+  const workerOrigin = 'https://example.test';
+  const publicManifest = [
+    '/sda-church-app/',
+    '/sda-church-app/index.html',
+  ];
+
+  const responseFor = (request, overrides = {}) => ({
+    ok: true,
+    redirected: false,
+    type: 'basic',
+    url: request.url,
+    headers: new Headers(),
+    ...overrides,
+  });
+  const writes = [];
+  const cache = {
+    put: async (request, response) => writes.push({ request, response }),
+  };
+
+  await precacheBuildAssets(
+    publicManifest,
+    workerOrigin,
+    cache,
+    async (request) => responseFor(request),
+  );
+  assert.equal(writes.length, publicManifest.length);
+  assert.ok(writes.every(({ request }) => request.credentials === 'omit'));
+
+  for (const invalidResponse of [
+    (request) => responseFor(request, { ok: false }),
+    (request) => responseFor(request, { type: 'opaque' }),
+    (request) => responseFor(request, { redirected: true }),
+    (request) => responseFor(request, { url: 'https://another.test/index.html' }),
+    (request) =>
+      responseFor(request, { headers: new Headers({ 'cache-control': 'no-store' }) }),
+    (request) =>
+      responseFor(request, {
+        headers: new Headers({ 'cache-control': 'max-age=60, private="Set-Cookie"' }),
+      }),
+  ]) {
+    writes.length = 0;
+    await assert.rejects(
+      () =>
+        precacheBuildAssets(
+          publicManifest,
+          workerOrigin,
+          cache,
+          async (request) => invalidResponse(request),
+        ),
+      /not public and immutable/,
+    );
+    assert.equal(writes.length, 0, 'precache must validate all responses before writing');
+  }
+});
+
+test('runtime build requests omit credentials and reject redirects', () => {
+  const original = new Request('https://example.test/sda-church-app/index.html', {
+    credentials: 'include',
+  });
+  const sanitized = createPublicBuildRequest(original);
+  assert.equal(sanitized.url, original.url);
+  assert.equal(sanitized.credentials, 'omit');
+  assert.equal(sanitized.redirect, 'error');
+
+  assert.equal(
+    isExactResponseForRequest(
+      {
+        redirected: false,
+        url: original.url,
+      },
+      sanitized,
+    ),
+    true,
+  );
+  assert.equal(
+    isExactResponseForRequest(
+      {
+        redirected: true,
+        url: original.url,
+      },
+      sanitized,
+    ),
+    false,
+  );
 });
 
 test('service-worker cache respects response privacy directives', () => {

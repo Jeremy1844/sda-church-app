@@ -110,17 +110,58 @@ function createPrecacheRequests(urls, workerOrigin) {
     (url) =>
       new Request(new URL(url, workerOrigin), {
         cache: 'reload',
-        credentials: 'same-origin',
+        credentials: 'omit',
+        redirect: 'error',
       }),
   );
 }
 
 function isCacheableResponse(response) {
   const cacheControl = response.headers.get('cache-control') || '';
+  const cacheControlDirectives = new Set(
+    cacheControl.split(',').flatMap((directive) => {
+      const match = /^\s*([!#$%&'*+.^_`|~0-9A-Za-z-]+)/.exec(directive);
+      return match ? [match[1].toLowerCase()] : [];
+    }),
+  );
   return (
     response.ok &&
     response.type !== 'opaque' &&
-    !/(?:^|,)\s*(?:no-store|private)(?:\s|,|$)/i.test(cacheControl)
+    !cacheControlDirectives.has('no-store') &&
+    !cacheControlDirectives.has('private')
+  );
+}
+
+function isExactResponseForRequest(response, request) {
+  if (response.redirected || typeof response.url !== 'string' || !response.url) {
+    return false;
+  }
+  const responseUrl = new URL(response.url);
+  const requestUrl = new URL(request.url);
+  return responseUrl.href === requestUrl.href;
+}
+
+function createPublicBuildRequest(request) {
+  return new Request(request, {
+    credentials: 'omit',
+    redirect: 'error',
+  });
+}
+
+async function precacheBuildAssets(urls, workerOrigin, cache, fetchImpl = fetch) {
+  const requests = createPrecacheRequests(urls, workerOrigin);
+  const validatedResponses = await Promise.all(
+    requests.map(async (request) => {
+      const response = await fetchImpl(request);
+      if (!isCacheableResponse(response) || !isExactResponseForRequest(response, request)) {
+        throw new Error(`Precache response is not public and immutable: ${request.url}`);
+      }
+      return { request, response };
+    }),
+  );
+
+  await Promise.all(
+    validatedResponses.map(({ request, response }) => cache.put(request, response)),
   );
 }
 
@@ -129,9 +170,7 @@ if (typeof self !== 'undefined') {
     event.waitUntil(
       caches
         .open(CACHE_NAME)
-        .then((cache) =>
-          cache.addAll(createPrecacheRequests(PRECACHE_URLS, self.location.origin)),
-        ),
+        .then((cache) => precacheBuildAssets(PRECACHE_URLS, self.location.origin, cache)),
     );
   });
 
@@ -165,15 +204,23 @@ if (typeof self !== 'undefined') {
       event.request.mode === 'navigate' && isSafeNavigationPath(requestUrl.pathname);
     if (!isBuildOwnedRequest && !isSafeNavigation) return;
 
+    const networkRequest = isBuildOwnedRequest
+      ? createPublicBuildRequest(event.request)
+      : event.request;
+
     event.respondWith(
-      fetch(event.request)
+      fetch(networkRequest)
         .then((response) => {
           // Only exact build-manifest paths may be written. Extensionless navigation
           // requests are handled for offline fallback but are never added to the cache.
-          if (isBuildOwnedRequest && isCacheableResponse(response)) {
+          if (
+            isBuildOwnedRequest &&
+            isCacheableResponse(response) &&
+            isExactResponseForRequest(response, networkRequest)
+          ) {
             const responseClone = response.clone();
             event.waitUntil(
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)),
+              caches.open(CACHE_NAME).then((cache) => cache.put(networkRequest, responseClone)),
             );
           }
           return response;
@@ -213,10 +260,13 @@ if (typeof module !== 'undefined') {
     isCacheableResponse,
     isExactBuildOwnedRequest,
     createPrecacheRequests,
+    createPublicBuildRequest,
     getCachedNavigationPath,
     isPublicAppPath,
     isSafeNavigationPath,
     isSameOriginRequest,
+    isExactResponseForRequest,
+    precacheBuildAssets,
     validatePrecacheUrls,
   };
 }

@@ -14,6 +14,7 @@ import {
   LanguageContext,
   SupportedLanguage,
 } from '@/constants/LanguageContext';
+import { applyHtmlLanguage } from '@/constants/HtmlLanguage';
 import { resolveSupportedLanguage } from '@/constants/LocaleRegistry';
 import {
   PwaInstallContext,
@@ -106,6 +107,12 @@ export default function RootLayout() {
     isWeb: Platform.OS === 'web',
     lastPromptOutcome: lastInstallOutcome,
   });
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      applyHtmlLanguage(document.documentElement, language);
+    }
+  }, [language]);
 
   const getSwUrl = () => {
     // If your app is at the root, use /sw.js. If hosted on GitHub Pages subpath, use /sda-church-app/sw.js

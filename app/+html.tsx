@@ -7,6 +7,8 @@ import { ScrollViewStyleReset } from 'expo-router/html';
 // do not have access to the DOM or browser APIs.
 export default function Root({ children }: { children: React.ReactNode }) {
   return (
+    // English is the static-export fallback. RootLayout synchronizes this attribute to
+    // en, es, zh-Hant, or zh-Hans after the saved/system language is loaded on web.
     <html lang="en">
       <head>
         <meta charSet="utf-8" />

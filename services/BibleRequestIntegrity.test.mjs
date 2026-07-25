@@ -8,6 +8,7 @@ import {
   chapterResponseMatchesRequest,
   isAbortError,
   isSameChapterRequest,
+  shouldSurfaceBibleLoadError,
 } from './BibleRequestIntegrity.ts';
 
 const request = {
@@ -64,6 +65,18 @@ test('recognizes AbortError by its cross-runtime error name only', () => {
   assert.equal(isAbortError({ name: 'AbortError' }), true);
   assert.equal(isAbortError(new Error('network failure')), false);
   assert.equal(isAbortError('AbortError'), false);
+
+  const active = new AbortController();
+  assert.equal(shouldSurfaceBibleLoadError(active.signal, new Error('offline')), true);
+  assert.equal(
+    shouldSurfaceBibleLoadError(
+      active.signal,
+      Object.assign(new Error('cancelled'), { name: 'AbortError' }),
+    ),
+    false,
+  );
+  active.abort();
+  assert.equal(shouldSurfaceBibleLoadError(active.signal, new Error('late failure')), false);
 });
 
 test('delayed chapter actions require an active exact selection and payload', () => {

@@ -7,6 +7,7 @@
     { "host": "apps.apple.com", "purpose": "existing-app-store-handoff", "mode": "user-initiated" },
     { "host": "assets.adventistconnect.org", "purpose": "existing-church-public-media", "mode": "automatic" },
     { "host": "atlantic-union.org", "purpose": "denominational-information", "mode": "user-initiated" },
+    { "host": "audio.bible.helloao.org", "purpose": "user-initiated-bible-chapter-audio", "mode": "user-initiated" },
     { "host": "bible.helloao.org", "purpose": "public-bible-content-api", "mode": "automatic" },
     { "host": "gnyc.org", "purpose": "conference-information", "mode": "user-initiated" },
     { "host": "hymnsforworship.org", "purpose": "external-hymnal-pages", "mode": "user-initiated" },
@@ -14,6 +15,7 @@
     { "host": "open.spotify.com", "purpose": "existing-public-audio-handoff", "mode": "user-initiated" },
     { "host": "play.google.com", "purpose": "existing-app-store-handoff", "mode": "user-initiated" },
     { "host": "sabbath-school.adventech.io", "purpose": "official-link-only-resource", "mode": "user-initiated" },
+    { "host": "sunrise-sunset.org", "purpose": "required-sunset-provider-attribution", "mode": "user-initiated" },
     { "host": "us06web.zoom.us", "purpose": "existing-public-class-handoff", "mode": "user-initiated" },
     { "host": "www.google.com", "purpose": "maps-handoff", "mode": "user-initiated" },
     { "host": "www.youtube.com", "purpose": "existing-public-video-handoff", "mode": "user-initiated" }

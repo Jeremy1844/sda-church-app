@@ -133,6 +133,12 @@ chapter. The provider also receives normal connection data, such as your IP addr
 browser information. The app does not add your name, email, device location, or other
 account information to Bible requests.
 
+When you start Bible audio, the selected chapter is streamed from
+`audio.bible.helloao.org`; an intentional next-chapter continuation uses the same service.
+The request path identifies the translation, book, chapter, and reader, and the provider
+receives normal connection data. The app accepts audio only from that exact HTTPS host and
+chapter path and does not add account or location data.
+
 Screens that display church photos request those public media files automatically from
 `assets.adventistconnect.org`. That provider receives the requested media path and normal
 connection data, such as your IP address and browser information. The app does not add

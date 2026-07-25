@@ -11,6 +11,13 @@ export function isAbortError(error: unknown): boolean {
   );
 }
 
+export function shouldSurfaceBibleLoadError(
+  signal: AbortSignal,
+  error: unknown,
+): boolean {
+  return !signal.aborted && !isAbortError(error);
+}
+
 export interface BibleChapterRequest {
   translationId: string;
   bookId: string;

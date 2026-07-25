@@ -8,6 +8,7 @@ import {
   parseChapterAndVerse,
   parsePositiveSafeInteger,
   parseStableVerseId,
+  resolveReaderChapterParam,
 } from '../services/BibleNavigation.ts';
 
 const books = [
@@ -66,4 +67,14 @@ test('reader coordinates accept only positive safe integers and clamp to book bo
     getChapterCoordinateIfInBounds({ id: 'JUD', numberOfChapters: 1 }, 2),
     null,
   );
+
+  assert.deepEqual(resolveReaderChapterParam('999999', true, null), {
+    status: 'deferred',
+    chapter: 999999,
+  });
+  assert.deepEqual(
+    resolveReaderChapterParam('999999', true, { id: 'JUD', numberOfChapters: 1 }),
+    { status: 'ready', chapter: 1 },
+  );
+  assert.deepEqual(resolveReaderChapterParam('0', true, null), { status: 'invalid' });
 });

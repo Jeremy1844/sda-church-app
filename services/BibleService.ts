@@ -16,6 +16,11 @@ import {
   anchorSplitClosingPunctuation,
   segmentDisplayText,
 } from './BibleRendering';
+import { enforceBibleChapterAudioPolicy } from './BibleAudioPolicy';
+import {
+  parseBibleBooksPayload,
+  parseBibleChapterCorePayload,
+} from './BiblePayloadPolicy';
 import { isAbortError } from './BibleRequestIntegrity';
 
 export const SUPPORTED_TRANSLATIONS = [
@@ -337,8 +342,8 @@ export async function fetchBooks(
     if (!res.ok) {
       throw new Error(`Failed to fetch books for ${translation}: ${res.status}`);
     }
-    const data = await res.json();
-    return data.books;
+    const raw: unknown = await res.json();
+    return parseBibleBooksPayload(raw, translation);
   } catch (e) {
     if (!signal?.aborted && !isAbortError(e)) {
       console.error(`Failed to load Bible books for ${translation}`, e);
@@ -518,7 +523,13 @@ export async function fetchChapter(
     if (!res.ok) {
       throw new Error(`Failed to fetch chapter: ${res.status}`);
     }
-    const data: TranslationBookChapter = await res.json();
+    const raw: unknown = await res.json();
+    const request = {
+      translationId: translation,
+      bookId: book,
+      chapter,
+    };
+    const data = parseBibleChapterCorePayload(raw, request);
 
     // Normalize content sequences to ensure punctuation stays anchored to words
     // even when separated by metadata objects (like footnotes), and to preserve
@@ -545,7 +556,23 @@ export async function fetchChapter(
       });
     }
 
-    return data;
+    const rawAudioLinks =
+      typeof raw === 'object' && raw !== null && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>).thisChapterAudioLinks
+        : undefined;
+
+    return enforceBibleChapterAudioPolicy(
+      {
+        ...data,
+        thisChapterLink: `/api/${translation}/${book}/${chapter}.json`,
+        thisChapterAudioLinks: rawAudioLinks,
+        nextChapterApiLink: null,
+        nextChapterAudioLinks: null,
+        previousChapterApiLink: null,
+        previousChapterAudioLinks: null,
+      },
+      request,
+    );
   } catch (e) {
     if (!signal?.aborted && !isAbortError(e)) {
       console.error(`Failed to load chapter ${book} ${chapter}`, e);

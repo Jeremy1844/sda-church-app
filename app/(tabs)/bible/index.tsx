@@ -40,6 +40,7 @@ import {
   getAdjacentChapter,
   getChapterCoordinateIfInBounds,
   parsePositiveSafeInteger,
+  resolveReaderChapterParam,
 } from '@/services/BibleNavigation';
 import {
   scheduleCancellableAction,
@@ -49,12 +50,13 @@ import {
   canRunChapterAction,
   canApplyChapterResponse,
   chapterResponseContainsVerse,
-  isAbortError,
   isSameChapterRequest,
+  shouldSurfaceBibleLoadError,
   type BibleChapterRequest,
 } from '@/services/BibleRequestIntegrity';
 import { createVerseRenderPlan } from '@/services/BibleRendering';
 import { helloAoBibleRepository } from '@/services/BibleRepository';
+import { normalizeSingleQueryParam } from '@/services/SearchQueryPolicy';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { createReaderStyles } from '@/styles/ReaderStyles';
 
@@ -145,6 +147,37 @@ const uiLabels = {
   },
 };
 
+const loadErrorLabels = {
+  en: {
+    booksUnavailable:
+      'Bible books are unavailable right now. Check your connection and try again.',
+    chapterUnavailable:
+      'This chapter is unavailable right now. Check your connection and try again.',
+    retry: 'Retry',
+  },
+  zh: {
+    booksUnavailable:
+      '\u7121\u6cd5\u8f09\u5165\u8056\u7d93\u66f8\u5377\u3002\u8acb\u6aa2\u67e5\u7db2\u8def\u9023\u7dda\u4e26\u91cd\u8a66\u3002',
+    chapterUnavailable:
+      '\u7121\u6cd5\u8f09\u5165\u672c\u7ae0\u3002\u8acb\u6aa2\u67e5\u7db2\u8def\u9023\u7dda\u4e26\u91cd\u8a66\u3002',
+    retry: '\u91cd\u8a66',
+  },
+  'zh-cn': {
+    booksUnavailable:
+      '\u65e0\u6cd5\u8f7d\u5165\u5723\u7ecf\u4e66\u5377\u3002\u8bf7\u68c0\u67e5\u7f51\u7edc\u8fde\u63a5\u5e76\u91cd\u8bd5\u3002',
+    chapterUnavailable:
+      '\u65e0\u6cd5\u8f7d\u5165\u672c\u7ae0\u3002\u8bf7\u68c0\u67e5\u7f51\u7edc\u8fde\u63a5\u5e76\u91cd\u8bd5\u3002',
+    retry: '\u91cd\u8bd5',
+  },
+  es: {
+    booksUnavailable:
+      'Los libros de la Biblia no est\u00e1n disponibles. Comprueba tu conexi\u00f3n e int\u00e9ntalo de nuevo.',
+    chapterUnavailable:
+      'Este cap\u00edtulo no est\u00e1 disponible. Comprueba tu conexi\u00f3n e int\u00e9ntalo de nuevo.',
+    retry: 'Reintentar',
+  },
+};
+
 export default function BibleScreen() {
   const theme = useAppTheme();
   const { textScale } = useTextSize();
@@ -166,23 +199,25 @@ export default function BibleScreen() {
     ],
   });
 
-  const {
-    bookId: paramBookId,
-    chapter: paramChapter,
-    translationId: paramTransId,
-    q: paramQuery,
-    backTo: paramBackTo,
-    refresh: paramRefresh,
-  } = useLocalSearchParams<{
-    bookId?: string;
-    chapter?: string;
-    translationId?: string;
-    q?: string;
-    backTo?: string;
-    refresh?: string;
+  const rawReaderParams = useLocalSearchParams<{
+    bookId?: string | string[];
+    chapter?: string | string[];
+    translationId?: string | string[];
+    q?: string | string[];
+    backTo?: string | string[];
+    refresh?: string | string[];
   }>();
+  const paramBookId = normalizeSingleQueryParam(rawReaderParams.bookId, 40) || undefined;
+  const paramChapter = normalizeSingleQueryParam(rawReaderParams.chapter, 16) || undefined;
+  const paramTransId =
+    normalizeSingleQueryParam(rawReaderParams.translationId, 40) || undefined;
+  const paramQuery = normalizeSingleQueryParam(rawReaderParams.q) || undefined;
+  const paramBackTo = normalizeSingleQueryParam(rawReaderParams.backTo, 160) || undefined;
+  const paramRefresh = normalizeSingleQueryParam(rawReaderParams.refresh, 80) || undefined;
 
   const labels = uiLabels[language as keyof typeof uiLabels] || uiLabels.en;
+  const errorLabels =
+    loadErrorLabels[language as keyof typeof loadErrorLabels] || loadErrorLabels.en;
   const scrollRef = useRef<ScrollView>(null);
   const versePositions = useRef<Record<number, number>>({});
   const lastScrollY = useRef(0);
@@ -198,16 +233,28 @@ export default function BibleScreen() {
   });
   const [book, setBook] = useState<BibleService.TranslationBook | null>(null);
   const [chapterNum, setChapterNum] = useState(1);
+  const lastSelectedBookId = useRef<string | null>(null);
 
   // Persistence state
   const [isPersistenceLoaded, setIsPersistenceLoaded] = useState(false);
   const initialBookId = useRef<string | null>(null);
+  const deferredParamSelection = useRef<{
+    bookId: string;
+    chapter: number | null;
+  } | null>(null);
 
   // Data state
   const [books, setBooks] = useState<BibleService.TranslationBook[]>([]);
   const [chapterData, setChapterData] =
     useState<BibleService.TranslationBookChapter | null>(null);
   const [loading, setLoading] = useState(false);
+  const [booksLoading, setBooksLoading] = useState(false);
+  const [booksErrorTranslationId, setBooksErrorTranslationId] =
+    useState<string | null>(null);
+  const [chapterErrorCoordinate, setChapterErrorCoordinate] =
+    useState<BibleChapterRequest | null>(null);
+  const [booksRetryVersion, setBooksRetryVersion] = useState(0);
+  const [chapterRetryVersion, setChapterRetryVersion] = useState(0);
   const selectionCoordinate: BibleChapterRequest | null = book
     ? {
         translationId: supportedTranslation.id,
@@ -261,6 +308,10 @@ export default function BibleScreen() {
       updateMenuVisibility(true);
     }
   }, [isSelectionActive]);
+
+  useEffect(() => {
+    if (book) lastSelectedBookId.current = book.id;
+  }, [book]);
 
   // Load selection from storage on mount
   useEffect(() => {
@@ -319,30 +370,50 @@ export default function BibleScreen() {
       }
     }
 
-    let requestedBook = book;
-    if (paramBookId) {
+    const matchingParamBook = paramBookId
+      ? books.find((candidate) => candidate.id === paramBookId)
+      : null;
+    const chapterResolution = resolveReaderChapterParam(
+      paramChapter,
+      !!paramBookId,
+      paramBookId ? matchingParamBook : book,
+    );
+
+    if (!paramBookId || chapterResolution.status === 'invalid') {
+      deferredParamSelection.current = null;
+    }
+
+    if (paramBookId && chapterResolution.status !== 'invalid') {
       // If the book is already in our current 'books' list, we can set it immediately.
       // Otherwise, we set initialBookId so the fetchBooks effect picks it up.
-      const matchingBook = books.find(
-        (b: BibleService.TranslationBook) => b.id === paramBookId,
-      );
-      if (matchingBook) {
-        requestedBook = matchingBook;
-        if (matchingBook.id !== book?.id) {
-          setBook(matchingBook);
+      if (matchingParamBook) {
+        deferredParamSelection.current = null;
+        if (matchingParamBook.id !== book?.id) {
+          setBook(matchingParamBook);
+        }
+        if (!paramChapter) {
+          const boundedCurrentChapter = clampChapterNumber(
+            chapterNum,
+            matchingParamBook.numberOfChapters,
+          );
+          if (boundedCurrentChapter !== chapterNum) {
+            setChapterNum(boundedCurrentChapter);
+          }
         }
       } else {
-        initialBookId.current = paramBookId;
+        deferredParamSelection.current = {
+          bookId: paramBookId,
+          chapter:
+            chapterResolution.status === 'deferred'
+              ? chapterResolution.chapter
+              : null,
+        };
       }
     }
 
-    if (paramChapter) {
-      const parsedChapter = parsePositiveSafeInteger(paramChapter);
-      if (parsedChapter !== null) {
-        const nextChapter = requestedBook
-          ? clampChapterNumber(parsedChapter, requestedBook.numberOfChapters)
-          : parsedChapter;
-        if (nextChapter !== chapterNum) setChapterNum(nextChapter);
+    if (chapterResolution.status === 'ready') {
+      if (chapterResolution.chapter !== chapterNum) {
+        setChapterNum(chapterResolution.chapter);
       }
     }
   }, [
@@ -690,6 +761,12 @@ export default function BibleScreen() {
     const requestedTranslationId = supportedTranslation.id;
 
     const loadBooksAndSetBook = async () => {
+      setBooksLoading(true);
+      setBooksErrorTranslationId(null);
+      setChapterErrorCoordinate(null);
+      setBooks([]);
+      setBook(null);
+      setChapterData(null);
       try {
         const fetchedBooks = await helloAoBibleRepository.getBooks(
           requestedTranslationId,
@@ -704,9 +781,15 @@ export default function BibleScreen() {
           if (controller.signal.aborted) return prevBook;
 
           // Use saved book ID if this is the first load after persistence
-          const targetBookId = initialBookId.current || prevBook?.id;
+          const deferredSelection = deferredParamSelection.current;
+          const targetBookId =
+            deferredSelection?.bookId ||
+            initialBookId.current ||
+            lastSelectedBookId.current;
+          const targetChapter = deferredSelection?.chapter ?? null;
           // Clear only for the winning request so an older response cannot consume it.
           initialBookId.current = null;
+          deferredParamSelection.current = null;
 
           const matchingBook = fetchedBooks.find(
             (b: BibleService.TranslationBook) => b.id === targetBookId,
@@ -716,7 +799,10 @@ export default function BibleScreen() {
             // If the book exists in the new translation, try to preserve the chapter.
             // We clamp it to 1 if the current number exceeds the new book's chapter count.
             setChapterNum((prev) =>
-              clampChapterNumber(prev, matchingBook.numberOfChapters),
+              clampChapterNumber(
+                targetChapter ?? prev,
+                matchingBook.numberOfChapters,
+              ),
             );
             return matchingBook;
           }
@@ -731,15 +817,18 @@ export default function BibleScreen() {
           );
         });
       } catch (e) {
-        if (!controller.signal.aborted && !isAbortError(e)) {
+        if (shouldSurfaceBibleLoadError(controller.signal, e)) {
           console.error('Error loading books:', e);
+          setBooksErrorTranslationId(requestedTranslationId);
         }
+      } finally {
+        if (!controller.signal.aborted) setBooksLoading(false);
       }
     };
     loadBooksAndSetBook();
 
     return () => controller.abort();
-  }, [supportedTranslation.id, isPersistenceLoaded]);
+  }, [supportedTranslation.id, isPersistenceLoaded, booksRetryVersion]);
 
   // Load chapter content
   useEffect(() => {
@@ -754,6 +843,7 @@ export default function BibleScreen() {
     if (!book || !isBookValidForTranslation) {
       setChapterData(null);
       setLoading(false);
+      setChapterErrorCoordinate(null);
       return;
     }
 
@@ -766,7 +856,9 @@ export default function BibleScreen() {
 
     const loadChapter = async () => {
       setLoading(true);
+      setChapterErrorCoordinate(null);
       setChapterData(null); // Clear old content immediately
+      versePositions.current = {};
       try {
         const data = await helloAoBibleRepository.getChapter(
           request.translationId,
@@ -779,10 +871,12 @@ export default function BibleScreen() {
           setChapterData(data);
         } else if (!controller.signal.aborted) {
           console.error('Bible API returned chapter coordinates that did not match the request.');
+          setChapterErrorCoordinate(request);
         }
       } catch (e) {
-        if (!controller.signal.aborted && !isAbortError(e)) {
+        if (shouldSurfaceBibleLoadError(controller.signal, e)) {
           console.error('Error loading chapter:', e);
+          setChapterErrorCoordinate(request);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -793,7 +887,14 @@ export default function BibleScreen() {
     loadChapter();
 
     return () => controller.abort();
-  }, [supportedTranslation.id, book?.id, chapterNum, books, isPersistenceLoaded]);
+  }, [
+    supportedTranslation.id,
+    book?.id,
+    chapterNum,
+    books,
+    isPersistenceLoaded,
+    chapterRetryVersion,
+  ]);
 
   const getVersePlainText = (verseNum: number) => {
     if (!chapterData) return '';
@@ -912,7 +1013,6 @@ export default function BibleScreen() {
 
     if (chapterData) {
       clearSelection();
-      versePositions.current = {}; // Clear previous chapter positions
 
       // Determine if the current query is targeting a specific verse in the chapter being loaded.
       // If it is, we skip the "reset to top" scroll to avoid conflicting with the targeted scroll logic.
@@ -1348,6 +1448,24 @@ export default function BibleScreen() {
   };
 
   const closeModal = () => setModalType(null);
+  const hasActiveBooksError =
+    booksErrorTranslationId === supportedTranslation.id;
+  const hasActiveChapterError = isSameChapterRequest(
+    chapterErrorCoordinate,
+    selectionCoordinate,
+  );
+  const activeLoadError = hasActiveBooksError
+    ? errorLabels.booksUnavailable
+    : hasActiveChapterError
+      ? errorLabels.chapterUnavailable
+      : null;
+  const retryActiveLoad = () => {
+    if (hasActiveBooksError) {
+      setBooksRetryVersion((version) => version + 1);
+    } else if (hasActiveChapterError) {
+      setChapterRetryVersion((version) => version + 1);
+    }
+  };
 
   return (
     <View style={NavigationStyles.container}>
@@ -1373,8 +1491,27 @@ export default function BibleScreen() {
           },
         ]}
       >
-        {loading ? (
+        {booksLoading || loading ? (
           <ActivityIndicator style={ReaderStyles.loader} color={theme.colors.primary} />
+        ) : activeLoadError ? (
+          <View
+            style={{
+              alignItems: 'center',
+              gap: 12,
+              paddingHorizontal: 24,
+              paddingTop: 32,
+            }}
+          >
+            <Text
+              variant="bodyLarge"
+              style={{ color: theme.colors.onSurface, textAlign: 'center' }}
+            >
+              {activeLoadError}
+            </Text>
+            <Button mode="contained-tonal" icon="refresh" onPress={retryActiveLoad}>
+              {errorLabels.retry}
+            </Button>
+          </View>
         ) : (
           <>
             {chapterData?.chapter.content.map((c, i) => renderContent(c, i))}

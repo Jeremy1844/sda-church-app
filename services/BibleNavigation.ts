@@ -52,6 +52,28 @@ export function getChapterCoordinateIfInBounds(
   return { bookId: book.id, chapter };
 }
 
+export type ReaderChapterParamResolution =
+  | { status: 'absent' | 'invalid' }
+  | { status: 'deferred'; chapter: number }
+  | { status: 'ready'; chapter: number };
+
+export function resolveReaderChapterParam(
+  value: string | undefined,
+  requestedBook: boolean,
+  resolvedBook: BibleBookBoundary | null | undefined,
+): ReaderChapterParamResolution {
+  if (value === undefined) return { status: 'absent' };
+  const chapter = parsePositiveSafeInteger(value);
+  if (chapter === null) return { status: 'invalid' };
+  if (requestedBook && !resolvedBook) return { status: 'deferred', chapter };
+  return {
+    status: 'ready',
+    chapter: resolvedBook
+      ? clampChapterNumber(chapter, resolvedBook.numberOfChapters)
+      : chapter,
+  };
+}
+
 const IDENTIFIER_PATTERN = /^[A-Za-z0-9_-]{2,40}$/;
 
 export function getAdjacentChapter(

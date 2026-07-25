@@ -11,6 +11,7 @@ import {
 } from '@/constants/ExternalLinks';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { ROUTES } from '@/constants/Routes';
 import { useAppTheme } from '@/constants/Themes';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
@@ -310,8 +311,8 @@ export default function FellowshipsAndFoodScreen() {
                   descriptionNumberOfLines={20}
                   left={(props) => <List.Icon {...props} icon="church" color={theme.colors.tertiary} />}
                   onPress={() => router.push({
-                    pathname: '/community/worship',
-                    params: { backTo: '/community/fellowship' },
+                    pathname: ROUTES.worship,
+                    params: { backTo: ROUTES.fellowship },
                   } as any)}
                 />
                 <Divider style={styles.listItemDivider} />

@@ -5,6 +5,7 @@
   "homepage": "https://codesammich.github.io/sda-church-app",
   "scripts": {
     "sync-version": "node public/sync-version.js",
+    "check:routes": "node public/check-route-contract.mjs",
     "web": "expo start --web",
     "deploy": "node public/deploy-web.js $@"
   },

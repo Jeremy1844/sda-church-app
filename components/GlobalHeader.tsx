@@ -8,6 +8,7 @@ import {
   resolveBibleReference,
   SearchableItem,
 } from '@/constants/SearchTerms';
+import { ROUTES } from '@/constants/Routes';
 import { useAppTheme } from '@/constants/Themes';
 import { router, useSegments } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -79,7 +80,7 @@ export const GlobalHeader = (props: any) => {
   // as the smart gateway, hiding individual book entries to prevent redundant results.
   const isBibleRef = !!resolveBibleReference(searchQuery, language);
   const deduplicated = isBibleRef
-    ? filtered.filter((item) => !item.isBibleBook || item.route === '/bible')
+    ? filtered.filter((item) => !item.isBibleBook || item.route === ROUTES.bible)
     : filtered;
 
   const results = deduplicated.map((item) => ({
@@ -141,13 +142,11 @@ export const GlobalHeader = (props: any) => {
               if (backTo) {
                 router.navigate(backTo as any);
               } else if (segments.includes('you')) {
-                router.navigate('/you' as any);
+                router.navigate(ROUTES.you as any);
               } else if (segments.includes('resources')) {
-                router.navigate('/resources' as any);
-              } else if (segments.includes('community')) {
-                router.navigate('/community' as any);
+                router.navigate(ROUTES.resources as any);
               } else if (segments.includes('home')) {
-                router.navigate('/' as any);
+                router.navigate(ROUTES.home as any);
               } else {
                 router.back();
               }

@@ -1,5 +1,6 @@
 import { getSortedHymns } from '@/constants/EnglishHymnal';
 import { SupportedLanguage } from '@/constants/LanguageContext';
+import { ROUTES, SearchRoute } from '@/constants/Routes';
 import * as BibleService from '@/services/BibleService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -7,7 +8,7 @@ export interface SearchableItem {
   title: string;
   keywords: string[];
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  route: string;
+  route: SearchRoute;
   subtitle?: string;
   isBibleBook?: boolean;
   isHymn?: boolean;
@@ -137,10 +138,10 @@ export const isSearchMatch = (
  * Appends the search query to the route if it's a Bible-related item, enabling
  * direct navigation to specific chapters and verses.
  */
-export const getSearchRoute = (item: SearchableItem, query: string): string => {
+export const getSearchRoute = (item: SearchableItem, query: string): SearchRoute => {
   if (item.isBibleBook && BIBLE_REF_REGEX.test(query)) {
     const separator = item.route.includes('?') ? '&' : '?';
-    return `${item.route}${separator}q=${encodeURIComponent(query.trim())}`;
+    return `${item.route}${separator}q=${encodeURIComponent(query.trim())}` as SearchRoute;
   }
   return item.route;
 };
@@ -1179,43 +1180,37 @@ export const getSearchableItems = (language: string): SearchableItem[] => {
   const labels = ALL_SEARCH_LABELS[language] || ALL_SEARCH_LABELS.en;
 
   const baseItems: SearchableItem[] = [
-    { ...labels.home, icon: 'home', route: '/' },
-    {
-      ...labels.community,
-      icon: 'account-group',
-      route: '/community',
-    },
+    { ...labels.home, icon: 'home', route: ROUTES.home },
     {
       ...labels.resources,
       icon: 'bookmark-multiple',
-      route: '/resources',
+      route: ROUTES.resources,
     },
     {
       ...labels.bible,
       icon: 'book-cross',
-      route: '/bible',
+      route: ROUTES.bible,
       isBibleBook: true,
     },
     {
       ...labels.hymnal,
       icon: 'music-note',
-      route: '/resources/english-hymnal',
+      route: ROUTES.englishHymnal,
     },
     {
       ...labels.chineseHymnal,
       icon: 'music-note',
-      route: '/resources/hymnal-selection',
+      route: ROUTES.hymnalSelection,
     },
-    { ...labels.give, icon: 'gift', route: '/home/give' },
-    { ...labels.darkMode, icon: 'theme-light-dark', route: '/you' },
-    { ...labels.language, icon: 'translate', route: '/you/language' },
-    { ...labels.aboutSDA, icon: 'information', route: '/home/about-sda' },
-    { ...labels.aboutHistory, icon: 'history', route: '/home/about-my-church' },
-    { ...labels.team, icon: 'account-multiple', route: '/home/team' },
-    { ...labels.baptism, icon: 'water-outline', route: '/community/baptism' },
-    { ...labels.worship, icon: 'church', route: '/community/worship' },
-    { ...labels.fellowship, icon: 'account-group', route: '/community/fellowship' },
-    { ...labels.roster, icon: 'clipboard-text-outline', route: '/community/roster' },
+    { ...labels.give, icon: 'gift', route: ROUTES.give },
+    { ...labels.darkMode, icon: 'theme-light-dark', route: ROUTES.you },
+    { ...labels.language, icon: 'translate', route: ROUTES.language },
+    { ...labels.aboutSDA, icon: 'information', route: ROUTES.aboutSda },
+    { ...labels.aboutHistory, icon: 'history', route: ROUTES.aboutChurch },
+    { ...labels.team, icon: 'account-multiple', route: ROUTES.team },
+    { ...labels.baptism, icon: 'water-outline', route: ROUTES.baptism },
+    { ...labels.worship, icon: 'church', route: ROUTES.worship },
+    { ...labels.fellowship, icon: 'account-group', route: ROUTES.fellowship },
   ];
 
   // Dynamically add all Bible books to the search list
@@ -1230,7 +1225,7 @@ export const getSearchableItems = (language: string): SearchableItem[] => {
         title: localizedName,
         keywords: [localizedName, id, ...data.short, labels.bible?.title || 'Bible'],
         icon: 'book-cross',
-        route: `/bible?bookId=${id}&translationId=${defaultTransId}`,
+        route: `${ROUTES.bible}?bookId=${id}&translationId=${defaultTransId}`,
         isBibleBook: true,
       };
     },
@@ -1248,7 +1243,7 @@ export const getSearchableItems = (language: string): SearchableItem[] => {
       labels.hymnal?.title || 'Hymnal',
     ],
     icon: 'music-note',
-    route: `/resources/english-hymnal?hymnNum=${h.number}&backTo=/resources`,
+    route: `${ROUTES.englishHymnal}?hymnNum=${h.number}&backTo=${ROUTES.resources}`,
     isHymn: true,
   }));
 

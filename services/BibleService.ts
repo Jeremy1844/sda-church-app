@@ -11,11 +11,12 @@
 
 export const API_BASE = 'https://bible.helloao.org/api';
 
-import { SupportedLanguage } from '@/constants/LanguageContext';
+import type { SupportedLanguage } from '../constants/LanguageContext';
 import {
   anchorSplitClosingPunctuation,
   segmentDisplayText,
-} from '@/services/BibleRendering';
+} from './BibleRendering';
+import { isAbortError } from './BibleRequestIntegrity';
 
 export const SUPPORTED_TRANSLATIONS = [
   { id: 'BSB', name: 'BSB', lang: 'en' },
@@ -327,16 +328,21 @@ export function selectRandomChapter(books: TranslationBook[]) {
  * @example fetchBooks('BSB')
  * @returns {Promise<TranslationBook[]>}
  */
-export async function fetchBooks(translation: string): Promise<TranslationBook[]> {
+export async function fetchBooks(
+  translation: string,
+  signal?: AbortSignal,
+): Promise<TranslationBook[]> {
   try {
-    const res = await fetch(`${API_BASE}/${translation}/books.json`);
+    const res = await fetch(`${API_BASE}/${translation}/books.json`, { signal });
     if (!res.ok) {
       throw new Error(`Failed to fetch books for ${translation}: ${res.status}`);
     }
     const data = await res.json();
     return data.books;
   } catch (e) {
-    console.error(`Failed to load Bible books for ${translation}`, e);
+    if (!signal?.aborted && !isAbortError(e)) {
+      console.error(`Failed to load Bible books for ${translation}`, e);
+    }
     throw e;
   }
 }
@@ -503,9 +509,12 @@ export async function fetchChapter(
   translation: string,
   book: string,
   chapter: number,
+  signal?: AbortSignal,
 ): Promise<TranslationBookChapter> {
   try {
-    const res = await fetch(`${API_BASE}/${translation}/${book}/${chapter}.json`);
+    const res = await fetch(`${API_BASE}/${translation}/${book}/${chapter}.json`, {
+      signal,
+    });
     if (!res.ok) {
       throw new Error(`Failed to fetch chapter: ${res.status}`);
     }
@@ -538,7 +547,9 @@ export async function fetchChapter(
 
     return data;
   } catch (e) {
-    console.error(`Failed to load chapter ${book} ${chapter}`, e);
+    if (!signal?.aborted && !isAbortError(e)) {
+      console.error(`Failed to load chapter ${book} ${chapter}`, e);
+    }
     throw e;
   }
 }

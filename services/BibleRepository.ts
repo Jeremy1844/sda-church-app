@@ -23,14 +23,11 @@ export interface OfflineBibleStore {
   ): Promise<TranslationBookChapter | null>;
 }
 
-/**
- * Current online adapter. Abort signals are reserved by the interface so a future source
- * can cancel requests; BibleService will adopt them in a separate, tested change.
- */
+/** Current online adapter with end-to-end request cancellation. */
 export const helloAoBibleRepository: BibleRepository = {
-  getBooks: (translationId) => fetchBooks(translationId),
-  getChapter: (translationId, bookId, chapter) =>
-    fetchChapter(translationId, bookId, chapter),
+  getBooks: (translationId, signal) => fetchBooks(translationId, signal),
+  getChapter: (translationId, bookId, chapter, signal) =>
+    fetchChapter(translationId, bookId, chapter, signal),
 };
 
 /**

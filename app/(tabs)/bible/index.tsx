@@ -35,7 +35,12 @@ import * as SearchTerms from '@/constants/SearchTerms';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
 import { getAdjacentChapter } from '@/services/BibleNavigation';
+import {
+  canApplyChapterResponse,
+  isAbortError,
+} from '@/services/BibleRequestIntegrity';
 import { createVerseRenderPlan } from '@/services/BibleRendering';
+import { helloAoBibleRepository } from '@/services/BibleRepository';
 import { NavigationStyles } from '@/styles/NavigationStyles';
 import { ReaderStyles } from '@/styles/ReaderStyles';
 
@@ -488,16 +493,27 @@ export default function BibleScreen() {
   useEffect(() => {
     if (!isPersistenceLoaded) return;
 
+    const controller = new AbortController();
+    const requestedTranslationId = supportedTranslation.id;
+
     const loadBooksAndSetBook = async () => {
       try {
-        const fetchedBooks = await BibleService.fetchBooks(supportedTranslation.id);
+        const fetchedBooks = await helloAoBibleRepository.getBooks(
+          requestedTranslationId,
+          controller.signal,
+        );
+        if (controller.signal.aborted) return;
+
         setBooks(fetchedBooks);
 
         // Determine the next book based on previous selection or default to Genesis
         setBook((prevBook) => {
+          if (controller.signal.aborted) return prevBook;
+
           // Use saved book ID if this is the first load after persistence
           const targetBookId = initialBookId.current || prevBook?.id;
-          initialBookId.current = null; // Clear it so it doesn't interfere with later changes
+          // Clear only for the winning request so an older response cannot consume it.
+          initialBookId.current = null;
 
           const matchingBook = fetchedBooks.find(
             (b: BibleService.TranslationBook) => b.id === targetBookId,
@@ -520,10 +536,14 @@ export default function BibleScreen() {
           );
         });
       } catch (e) {
-        console.error('Error loading books:', e);
+        if (!controller.signal.aborted && !isAbortError(e)) {
+          console.error('Error loading books:', e);
+        }
       }
     };
     loadBooksAndSetBook();
+
+    return () => controller.abort();
   }, [supportedTranslation.id, isPersistenceLoaded]);
 
   // Load chapter content
@@ -536,25 +556,48 @@ export default function BibleScreen() {
       (b: BibleService.TranslationBook) => b.id === book?.id,
     );
 
-    if (book && isBookValidForTranslation) {
-      const loadChapter = async () => {
-        setLoading(true);
-        setChapterData(null); // Clear old content immediately
-        try {
-          const data = await BibleService.fetchChapter(
-            supportedTranslation.id,
-            book.id,
-            chapterNum,
-          );
+    if (!book || !isBookValidForTranslation) {
+      setChapterData(null);
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const request = {
+      translationId: supportedTranslation.id,
+      bookId: book.id,
+      chapter: chapterNum,
+    };
+
+    const loadChapter = async () => {
+      setLoading(true);
+      setChapterData(null); // Clear old content immediately
+      try {
+        const data = await helloAoBibleRepository.getChapter(
+          request.translationId,
+          request.bookId,
+          request.chapter,
+          controller.signal,
+        );
+
+        if (canApplyChapterResponse(controller.signal, data, request)) {
           setChapterData(data);
-        } catch (e) {
+        } else if (!controller.signal.aborted) {
+          console.error('Bible API returned chapter coordinates that did not match the request.');
+        }
+      } catch (e) {
+        if (!controller.signal.aborted && !isAbortError(e)) {
           console.error('Error loading chapter:', e);
-        } finally {
+        }
+      } finally {
+        if (!controller.signal.aborted) {
           setLoading(false);
         }
-      };
-      loadChapter();
-    }
+      }
+    };
+    loadChapter();
+
+    return () => controller.abort();
   }, [supportedTranslation.id, book?.id, chapterNum, books, isPersistenceLoaded]);
 
   const getVersePlainText = (verseNum: number) => {

@@ -56,7 +56,8 @@ const validChapterPayload = () => ({
         number: 1,
         content: [
           { heading: 'Inline heading' },
-          { text: 'I will give thanks', poem: 1 },
+          { text: 'I will give thanks', poem: 1, wordsOfJesus: false },
+          { text: 'A descriptive line', descriptive: true },
           { lineBreak: true },
           'with all my heart.',
           { noteId: 1 },
@@ -162,9 +163,29 @@ test('validates and sanitizes every renderer-supported chapter shape', () => {
   assert.equal(result.book.id, 'PSA');
   assert.equal(result.numberOfVerses, 2);
   assert.equal(result.chapter.content[1].type, 'hebrew_subtitle');
+  assert.deepEqual(result.chapter.content[3].content[1], {
+    text: 'I will give thanks',
+    poem: 1,
+    wordsOfJesus: false,
+  });
+  assert.deepEqual(result.chapter.content[3].content[2], {
+    text: 'A descriptive line',
+    descriptive: true,
+  });
   assert.deepEqual(result.chapter.footnotes.map(({ noteId }) => noteId), [0, 1]);
   assert.equal('thisChapterAudioLinks' in result, false);
   assert.equal('ignoredProviderMetadata' in result.translation, false);
+});
+
+test('accepts a provider verse object whose translation text is intentionally empty', () => {
+  const payload = validChapterPayload();
+  payload.chapter.content[4].content = [];
+  const result = parseBibleChapterCorePayload(payload, request);
+  assert.deepEqual(result.chapter.content[4], {
+    type: 'verse',
+    number: 2,
+    content: [],
+  });
 });
 
 test('rejects translation, book, and chapter coordinate mismatches', () => {
@@ -197,6 +218,8 @@ test('rejects malformed or unsupported nested content', () => {
     { type: 'verse', number: 1, content: [{ unknown: true }] },
     { type: 'verse', number: 1, content: [{ lineBreak: false }] },
     { type: 'verse', number: 1, content: [{ text: 'text', poem: 0 }] },
+    { type: 'verse', number: 1, content: [{ text: 'text', wordsOfJesus: 'yes' }] },
+    { type: 'verse', number: 1, content: [{ text: 'text', descriptive: 1 }] },
     { type: 'verse', number: 1, content: [{ text: 'text', noteId: 1 }] },
     { type: 'heading', content: [42] },
     { type: 'hebrew_subtitle', content: [{ heading: 'not supported here' }] },
@@ -218,18 +241,29 @@ test('rejects malformed or unsupported nested content', () => {
   rejects(() => parseBibleChapterCorePayload(oversizedInlineList, request));
 });
 
-test('rejects duplicate/noncontiguous verses and an implausible verse total', () => {
+test('accepts unique sparse provider verse numbering but rejects duplicates and bad totals', () => {
   const duplicateVerse = validChapterPayload();
   duplicateVerse.chapter.content[4].number = 1;
   rejects(() => parseBibleChapterCorePayload(duplicateVerse, request));
 
-  const noncontiguousVerse = validChapterPayload();
-  noncontiguousVerse.chapter.content[4].number = 3;
-  rejects(() => parseBibleChapterCorePayload(noncontiguousVerse, request));
+  const sparseVerse = validChapterPayload();
+  sparseVerse.chapter.content[4].number = 3;
+  const sparseResult = parseBibleChapterCorePayload(sparseVerse, request);
+  assert.deepEqual(
+    sparseResult.chapter.content
+      .filter(({ type }) => type === 'verse')
+      .map(({ number }) => number),
+    [1, 3],
+  );
 
   const wrongTotal = validChapterPayload();
   wrongTotal.numberOfVerses = 3;
   rejects(() => parseBibleChapterCorePayload(wrongTotal, request));
+
+  const referenceToMissingNumber = validChapterPayload();
+  referenceToMissingNumber.chapter.content[4].number = 3;
+  referenceToMissingNumber.chapter.footnotes[1].reference.verse = 2;
+  rejects(() => parseBibleChapterCorePayload(referenceToMissingNumber, request));
 });
 
 test('rejects duplicate, orphaned, and malformed footnotes', () => {

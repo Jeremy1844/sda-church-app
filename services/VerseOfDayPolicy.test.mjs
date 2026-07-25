@@ -9,6 +9,7 @@ import {
   parseVerseOfDaySelection,
   resolveVerseOfDayFailure,
   selectStableDailyIndex,
+  selectStableDailyVerseNumber,
 } from './VerseOfDayPolicy.ts';
 
 const dateKey = '2026-07-25';
@@ -98,6 +99,18 @@ test('stable daily selection indexes converge for overlapping language loads', (
   const first = selectStableDailyIndex(`${dateKey}:book`, 66);
   assert.equal(first, selectStableDailyIndex(`${dateKey}:book`, 66));
   assert.equal(selectStableDailyIndex(`${dateKey}:book`, 0), null);
+});
+
+test('daily selection uses real sparse verse identifiers rather than a synthetic range', () => {
+  const sparse = [1, 2, 4, 5];
+  const selected = selectStableDailyVerseNumber(`${dateKey}:sparse`, sparse);
+  assert.ok(sparse.includes(selected));
+  assert.equal(
+    selected,
+    selectStableDailyVerseNumber(`${dateKey}:sparse`, sparse),
+  );
+  assert.equal(selectStableDailyVerseNumber('bad', [1, 1]), null);
+  assert.equal(selectStableDailyVerseNumber('bad', [0, 1]), null);
 });
 
 test('daily verse failure state preserves validated cache and ignores stale cancellation', () => {

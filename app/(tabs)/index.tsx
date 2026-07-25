@@ -47,6 +47,7 @@ import {
   RenderedVerseOfDay,
   resolveVerseOfDayFailure,
   selectStableDailyIndex,
+  selectStableDailyVerseNumber,
   VerseOfDayLoadStatus,
   VerseOfDaySelection,
   VOTD_CONFIG_KEY,
@@ -124,15 +125,20 @@ async function createDailyVerseSelection(
     throw new Error('The Bible provider returned the wrong chapter.');
   }
 
-  const verseIndex = selectStableDailyIndex(
+  const verseNumbers = chapterData.chapter.content
+    .filter(
+      (content): content is BibleService.ChapterVerse => content.type === 'verse',
+    )
+    .map((content) => content.number);
+  const verse = selectStableDailyVerseNumber(
     `${dateKey}:${book.id}:${chapter}:verse`,
-    chapterData.numberOfVerses,
+    verseNumbers,
   );
-  if (verseIndex === null) {
+  if (verse === null) {
     throw new Error('The selected Bible chapter has no verses.');
   }
 
-  return { bookId: book.id, chapter, verse: verseIndex + 1, dateKey };
+  return { bookId: book.id, chapter, verse, dateKey };
 }
 
 async function renderDailyVerse(

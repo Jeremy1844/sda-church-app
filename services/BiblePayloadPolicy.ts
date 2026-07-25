@@ -307,15 +307,25 @@ function parseInlineContent(
   path: string,
   budget: TextBudget,
   allowInlineHeadingAndBreak: boolean,
-): string | { text: string; poem?: number } | { heading: string } | {
+): string | {
+  text: string;
+  poem?: number;
+  wordsOfJesus?: boolean;
+  descriptive?: boolean;
+} | { heading: string } | {
   lineBreak: true;
 } | { noteId: number } {
   if (typeof value === 'string') return chapterText(value, path, budget);
 
   const source = record(value, path);
   if ('text' in source) {
-    exactKeys(source, path, ['text', 'poem']);
-    const parsed: { text: string; poem?: number } = {
+    exactKeys(source, path, ['text', 'poem', 'wordsOfJesus', 'descriptive']);
+    const parsed: {
+      text: string;
+      poem?: number;
+      wordsOfJesus?: boolean;
+      descriptive?: boolean;
+    } = {
       text: chapterText(source.text, `${path}.text`, budget),
     };
     if (source.poem !== undefined) {
@@ -325,6 +335,14 @@ function parseInlineContent(
         1,
         MAX_POETRY_INDENT,
       );
+    }
+    for (const field of ['wordsOfJesus', 'descriptive'] as const) {
+      if (source[field] !== undefined) {
+        if (typeof source[field] !== 'boolean') {
+          invalid(`${path}.${field}`, 'expected a boolean');
+        }
+        parsed[field] = source[field];
+      }
     }
     return parsed;
   }
@@ -406,7 +424,7 @@ function parseContent(
         source.content,
         `${path}.content`,
         MAX_BIBLE_INLINE_ITEMS,
-        1,
+        source.type === 'verse' ? 0 : 1,
       );
       const trackNote = (
         parsed: ChapterVerse['content'][number],
@@ -519,7 +537,7 @@ function parseFootnotes(
         reference.verse,
         `${path}.reference.verse`,
         0,
-        numberOfVerses,
+        MAX_BIBLE_VERSES_PER_CHAPTER,
       );
       // Verse zero is how the provider associates notes with a chapter subtitle.
       if (referenceVerse !== 0 && !verseIds.has(referenceVerse)) {
@@ -603,11 +621,6 @@ export function parseBibleChapterCorePayload(
       'payload.numberOfVerses',
       'does not match the number of validated verses',
     );
-  }
-  for (let number = 1; number <= numberOfVerses; number += 1) {
-    if (!verseIds.has(number)) {
-      invalid('payload.chapter.content', 'verse identifiers are not contiguous');
-    }
   }
 
   const footnotes = parseFootnotes(

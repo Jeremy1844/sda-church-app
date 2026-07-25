@@ -147,16 +147,21 @@ store, provider-side request logs for these services.
 
 ### 4. Sunset Times and Optional Location
 
-Home uses `api.sunrise-sunset.org` to retrieve sunset times. By default, requests use the
-public latitude and longitude of the Elmhurst church location and do not access your
-device location. If you select **Use my location**, the app first explains the data
-transfer. Only after you choose **Continue** does your browser ask for location permission.
-If permission is granted, your current latitude and longitude are sent directly to
-`api.sunrise-sunset.org` in the sunset request. This app does not store, persist, or log
-those coordinates; it keeps them in component memory only until you switch back to
-Elmhurst times or leave or reload the app. Device-coordinate requests also use the
-browser's `no-store` cache mode. The provider may still receive and process the coordinates
-and normal connection data, such as your IP address, under its own privacy practices.
+Home uses the v2 API at `api.sunrise-sunset.org` to retrieve a bounded range of sunset
+times. The response is accepted only when its dates, coordinates, time zone, and adjacent
+Friday/Saturday pair match the request. Home visibly links to Sunrise-Sunset.org as the
+data provider. By default, the request uses the public latitude and longitude of the
+Elmhurst church and does not access your device location.
+
+If you select **Use my location**, the app first explains the data transfer. Only after
+you choose **Continue** does your browser ask for location permission. If permission is
+granted, your current latitude and longitude are sent directly to
+`api.sunrise-sunset.org`; the provider determines the local calendar and time zone for
+those coordinates. This app does not store, persist, or log the coordinates. It keeps
+them in component memory only until you switch back to Elmhurst times or leave or reload
+the app. Device-coordinate requests also use the browser's `no-store` cache mode. The
+provider may still receive and process the coordinates and normal connection data, such
+as your IP address, under its own privacy practices.
 
 ---
 

@@ -168,3 +168,19 @@ export function selectStableDailyIndex(seed: string, itemCount: number): number 
 
   return (hash >>> 0) % itemCount;
 }
+
+/** Selects from the provider's real verse identifiers, which may intentionally be sparse. */
+export function selectStableDailyVerseNumber(
+  seed: string,
+  verseNumbers: readonly number[],
+): number | null {
+  if (!Array.isArray(verseNumbers) || verseNumbers.length === 0) return null;
+  const seen = new Set<number>();
+  for (const verse of verseNumbers) {
+    if (!isBoundedPositiveInteger(verse, MAX_VERSE) || seen.has(verse)) return null;
+    seen.add(verse);
+  }
+
+  const index = selectStableDailyIndex(seed, verseNumbers.length);
+  return index === null ? null : verseNumbers[index];
+}

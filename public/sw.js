@@ -32,7 +32,7 @@ function isOwnedCacheName(cacheName) {
   return cacheName.startsWith(CACHE_PREFIX);
 }
 
-function isCacheablePath(pathname, cacheablePaths = PRECACHE_URLS) {
+function isPublicAppPath(pathname) {
   if (
     typeof pathname !== 'string' ||
     pathname.includes('%') ||
@@ -51,7 +51,32 @@ function isCacheablePath(pathname, cacheablePaths = PRECACHE_URLS) {
     return false;
   }
 
+  return true;
+}
+
+function isCacheablePath(pathname, cacheablePaths = PRECACHE_URLS) {
+  if (!isPublicAppPath(pathname)) return false;
+
   return cacheablePaths.includes(pathname);
+}
+
+function getCachedNavigationPath(pathname, cacheablePaths = PRECACHE_URLS) {
+  if (!isPublicAppPath(pathname)) return null;
+  if (pathname === APP_BASE_PATH || pathname === `${APP_BASE_PATH}/`) {
+    return cacheablePaths.includes(`${APP_BASE_PATH}/`)
+      ? `${APP_BASE_PATH}/`
+      : null;
+  }
+
+  const withoutTrailingSlash = pathname.endsWith('/')
+    ? pathname.slice(0, -1)
+    : pathname;
+  const htmlPath = `${withoutTrailingSlash}.html`;
+  return cacheablePaths.includes(htmlPath) ? htmlPath : null;
+}
+
+function isSafeNavigationPath(pathname, cacheablePaths = PRECACHE_URLS) {
+  return getCachedNavigationPath(pathname, cacheablePaths) !== null;
 }
 
 function isCacheableResponse(response) {
@@ -90,12 +115,17 @@ if (typeof self !== 'undefined') {
 
     const requestUrl = new URL(event.request.url);
     if (!isSameOriginRequest(requestUrl.href, self.location.origin)) return;
-    if (!isCacheablePath(requestUrl.pathname)) return;
+    const isBuildOwnedPath = isCacheablePath(requestUrl.pathname);
+    const isSafeNavigation =
+      event.request.mode === 'navigate' && isSafeNavigationPath(requestUrl.pathname);
+    if (!isBuildOwnedPath && !isSafeNavigation) return;
 
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          if (isCacheableResponse(response)) {
+          // Only exact build-manifest paths may be written. Extensionless navigation
+          // requests are handled for offline fallback but are never added to the cache.
+          if (isBuildOwnedPath && isCacheableResponse(response)) {
             const responseClone = response.clone();
             event.waitUntil(
               caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)),
@@ -107,8 +137,10 @@ if (typeof self !== 'undefined') {
           const cache = await caches.open(CACHE_NAME);
           const exactMatch = await cache.match(event.request);
           if (exactMatch) return exactMatch;
-          if (event.request.mode === 'navigate') {
+          if (isSafeNavigation) {
+            const routeDocumentPath = getCachedNavigationPath(requestUrl.pathname);
             return (
+              (routeDocumentPath && (await cache.match(routeDocumentPath))) ||
               (await cache.match(`${APP_BASE_PATH}/`)) ||
               (await cache.match(`${APP_BASE_PATH}/index.html`)) ||
               Response.error()
@@ -134,6 +166,9 @@ if (typeof module !== 'undefined') {
     isOwnedCacheName,
     isCacheablePath,
     isCacheableResponse,
+    getCachedNavigationPath,
+    isPublicAppPath,
+    isSafeNavigationPath,
     isSameOriginRequest,
   };
 }

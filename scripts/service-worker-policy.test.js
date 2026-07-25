@@ -4,6 +4,8 @@ const {
   isOwnedCacheName,
   isCacheablePath,
   isCacheableResponse,
+  getCachedNavigationPath,
+  isSafeNavigationPath,
   isSameOriginRequest,
 } = require('../public/sw');
 
@@ -53,7 +55,42 @@ test('service-worker cache is limited to same-origin public requests', () => {
   assert.equal(isCacheablePath('/sda-church-app/data/unknown.json', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/sda-church-app/admin%2Fpublic.html', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/another-app/index.html', buildOwnedPaths), false);
+  // Navigation aliases are deliberately not cache-write targets.
   assert.equal(isCacheablePath('/sda-church-app/home/give', buildOwnedPaths), false);
+});
+
+test('safe extensionless navigations resolve only to cached public route documents', () => {
+  const buildOwnedPaths = [
+    '/sda-church-app/',
+    '/sda-church-app/index.html',
+    '/sda-church-app/home/give.html',
+    '/sda-church-app/community/prayer.html',
+    // A generated path in a sensitive family must still fail closed.
+    '/sda-church-app/admin/public.html',
+  ];
+
+  assert.equal(
+    getCachedNavigationPath('/sda-church-app/home/give', buildOwnedPaths),
+    '/sda-church-app/home/give.html',
+  );
+  assert.equal(
+    getCachedNavigationPath('/sda-church-app/home/give/', buildOwnedPaths),
+    '/sda-church-app/home/give.html',
+  );
+  assert.equal(
+    getCachedNavigationPath('/sda-church-app/community/prayer', buildOwnedPaths),
+    '/sda-church-app/community/prayer.html',
+  );
+  assert.equal(
+    getCachedNavigationPath('/sda-church-app/', buildOwnedPaths),
+    '/sda-church-app/',
+  );
+
+  assert.equal(isSafeNavigationPath('/sda-church-app/home/give', buildOwnedPaths), true);
+  assert.equal(isSafeNavigationPath('/sda-church-app/home/unknown', buildOwnedPaths), false);
+  assert.equal(isSafeNavigationPath('/sda-church-app/admin/public', buildOwnedPaths), false);
+  assert.equal(isSafeNavigationPath('/sda-church-app/home%2Fgive', buildOwnedPaths), false);
+  assert.equal(isSafeNavigationPath('/another-app/home/give', buildOwnedPaths), false);
 });
 
 test('service-worker cache respects response privacy directives', () => {

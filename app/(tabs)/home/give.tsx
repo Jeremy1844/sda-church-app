@@ -23,12 +23,6 @@ export default function GiveScreen() {
       cashTitle: 'Cash',
       cashDesc:
         'We welcome cash donations during our weekly meetings. Envelopes are provided for your convenience to specify tithe or designate your gift to various offering categories and local ministries.',
-      zelleSection: 'Electronic Transfer',
-      zelleLabel: 'Direct Bank Transfer',
-      zelleTitle: 'Zelle',
-      zelleDesc:
-        'Electronic transfers via Zelle are currently being established. Please check back soon for the official church handle.',
-      zelleButton: 'Zelle (TBD)',
       onlineSection: 'Online Portal',
       onlineLabel: 'Official Platform',
       onlineTitle: 'AdventistGiving',
@@ -48,11 +42,6 @@ export default function GiveScreen() {
       cashTitle: '現金',
       cashDesc:
         '我們歡迎在每週聚會期間進行現金捐款。我們提供奉獻袋，方便您註明什一奉獻或將捐款指定用於特定的事工類別或在地項目。',
-      zelleSection: '電子轉賬',
-      zelleLabel: '直接銀行轉賬',
-      zelleTitle: 'Zelle',
-      zelleDesc: 'Zelle 電子轉賬正在建立中。請稍後查看教會賬號。',
-      zelleButton: 'Zelle (待定)',
       onlineSection: '網上平台',
       onlineLabel: '官方平台',
       onlineTitle: 'AdventistGiving',
@@ -72,11 +61,6 @@ export default function GiveScreen() {
       cashTitle: '现金',
       cashDesc:
         '我们欢迎在每周聚会期间进行现金捐款。我们提供奉献袋，方便您注明什一奉献或将捐款指定用于特定的事工类别或本地项目。',
-      zelleSection: '电子转账',
-      zelleLabel: '直接银行转账',
-      zelleTitle: 'Zelle',
-      zelleDesc: 'Zelle 电子转账正在建立中。请稍后查看教会账号。',
-      zelleButton: 'Zelle (待定)',
       onlineSection: '网上平台',
       onlineLabel: '官方平台',
       onlineTitle: 'AdventistGiving',
@@ -96,12 +80,6 @@ export default function GiveScreen() {
       cashTitle: 'Efectivo',
       cashDesc:
         'Aceptamos donaciones en efectivo durante nuestras reuniones semanales. Se proporcionan sobres para su conveniencia, permitiéndole especificar el diezmo o asignar su donación a diversas categorías de ofrendas y ministerios locales.',
-      zelleSection: 'Transferencia Electrónica',
-      zelleLabel: 'Transferencia Directa',
-      zelleTitle: 'Zelle',
-      zelleDesc:
-        'Las transferencias electrónicas a través de Zelle se están estableciendo actualmente. Vuelva pronto para ver el identificador.',
-      zelleButton: 'Zelle (TBD)',
       onlineSection: 'Portal en Línea',
       onlineLabel: 'Plataforma Oficial',
       onlineTitle: 'AdventistGiving',
@@ -221,58 +199,6 @@ export default function GiveScreen() {
                 onPress={openAdventistGiving}
               >
                 {labels.onlineButton}
-              </Button>
-            </Card.Actions>
-          </Card>
-        </View>
-
-        <View style={DocumentStyles.section}>
-          <Text
-            variant="titleLarge"
-            style={[
-              DocumentStyles.sectionTitle,
-              {
-                color: theme.colors.onSurface,
-                borderBottomColor: theme.colors.outlineVariant,
-              },
-            ]}
-          >
-            {labels.zelleSection}
-          </Text>
-          <Card style={[DocumentStyles.card, DocumentStyles.orgCard]} mode="outlined">
-            <Card.Content>
-              <Text
-                variant="labelMedium"
-                style={{ color: theme.colors.onSurfaceVariant }}
-              >
-                {labels.zelleLabel}
-              </Text>
-              <Text
-                variant="titleLarge"
-                style={[DocumentStyles.orgName, { color: theme.colors.onSurface }]}
-              >
-                {labels.zelleTitle}
-              </Text>
-              <Text
-                style={[
-                  DocumentStyles.description,
-                  DocumentStyles.orgDesc,
-                  { color: theme.colors.onSurface },
-                ]}
-                variant="bodyMedium"
-              >
-                {labels.zelleDesc}
-              </Text>
-            </Card.Content>
-            <Card.Actions>
-              <Button
-                mode="contained"
-                icon="bank-transfer"
-                disabled
-                buttonColor={theme.colors.surfaceVariant}
-                textColor={theme.colors.onSurfaceVariant}
-              >
-                {labels.zelleButton}
               </Button>
             </Card.Actions>
           </Card>

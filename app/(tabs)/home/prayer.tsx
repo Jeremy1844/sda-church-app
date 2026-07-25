@@ -5,7 +5,7 @@ import { DocumentStyles } from '@/styles/DocumentStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
 import { ScrollView, View } from 'react-native';
-import { Button, Card, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const allLabels = {
@@ -70,42 +70,6 @@ export default function PrayerWallScreen() {
             {labels.description}
           </Text>
 
-          <Button
-            mode="contained"
-            icon="plus"
-            style={{ marginTop: 16 }}
-            buttonColor={theme.colors.primary}
-            onPress={() => {
-              /* Link to a Google Form or internal submission tool */
-            }}
-          >
-            {labels.submitButton}
-          </Button>
-        </View>
-
-        <View style={DocumentStyles.section}>
-          <Card
-            style={{
-              backgroundColor: theme.colors.surface,
-              borderStyle: 'dashed',
-              borderWidth: 1,
-              borderColor: theme.colors.outlineVariant,
-            }}
-            mode="contained"
-          >
-            <Card.Content>
-              <Text
-                variant="bodyMedium"
-                style={{
-                  color: theme.colors.onSurfaceVariant,
-                  textAlign: 'center',
-                  paddingVertical: 40,
-                }}
-              >
-                {labels.placeholder}
-              </Text>
-            </Card.Content>
-          </Card>
         </View>
       </ScrollView>
     </>

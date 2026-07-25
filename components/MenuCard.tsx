@@ -36,6 +36,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({
   style,
 }) => {
   const theme = useAppTheme();
+  const resolvedRightIcon = onPress ? rightIcon : null;
   return (
     <AnimatedTouchableOpacity
       style={[
@@ -49,6 +50,8 @@ export const MenuCard: React.FC<MenuCardProps> = ({
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !onPress }}
     >
       <MaterialCommunityIcons
         name={icon}
@@ -72,9 +75,9 @@ export const MenuCard: React.FC<MenuCardProps> = ({
       </View>
       {rightElement
         ? rightElement()
-        : rightIcon && (
+        : resolvedRightIcon && (
             <MaterialCommunityIcons
-              name={rightIcon}
+              name={resolvedRightIcon}
               size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
               color={theme.colors.onSurfaceVariant}
             />

@@ -576,19 +576,6 @@ export default function HomeScreen() {
               style={styles.gridCell}
             />
             <GridMenuCard
-              title={labels.bulletin}
-              icon="file-document-outline"
-              color={theme.colors.cardBgColors.bulletin}
-              iconColor={theme.colors.iconColors.bulletin}
-              onPress={() =>
-                router.push({
-                  pathname: '/home/bulletin',
-                  params: { backTo: '/' },
-                } as any)
-              }
-              style={styles.gridCell}
-            />
-            <GridMenuCard
               title={labels.give}
               icon="hand-heart-outline"
               color={theme.colors.cardBgColors.tithe}
@@ -596,32 +583,6 @@ export default function HomeScreen() {
               onPress={() =>
                 router.push({
                   pathname: '/home/give',
-                  params: { backTo: '/' },
-                } as any)
-              }
-              style={styles.gridCell}
-            />
-            <GridMenuCard
-              title={labels.prayer}
-              icon="hands-pray"
-              color={theme.colors.cardBgColors.prayer}
-              iconColor={theme.colors.iconColors.prayer}
-              onPress={() =>
-                router.push({
-                  pathname: '/home/prayer',
-                  params: { backTo: '/' },
-                } as any)
-              }
-              style={styles.gridCell}
-            />
-            <GridMenuCard
-              title={labels.events}
-              icon="calendar-month"
-              color={theme.colors.cardBgColors.events}
-              iconColor={theme.colors.iconColors.events}
-              onPress={() =>
-                router.push({
-                  pathname: '/home/events',
                   params: { backTo: '/' },
                 } as any)
               }

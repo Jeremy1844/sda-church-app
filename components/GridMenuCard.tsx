@@ -34,8 +34,10 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
 }) => {
   const theme = useAppTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const disabled = !onPress;
 
   const handlePressIn = () => {
+    if (disabled) return;
     Animated.spring(scaleAnim, {
       toValue: 0.96,
       useNativeDriver: true,
@@ -45,6 +47,7 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
   };
 
   const handlePressOut = () => {
+    if (disabled) return;
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -65,6 +68,9 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        disabled={disabled}
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
         activeOpacity={1}
       >
         {/* Title block — top left */}
@@ -83,14 +89,15 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
               style={styles.decorIcon}
             />
           </View>
-          {/* Diagonal arrow affordance */}
-          <View style={styles.arrowBadge}>
-            <MaterialCommunityIcons
-              name="arrow-top-right"
-              size={14}
-              color="#374151"
-            />
-          </View>
+          {!disabled && (
+            <View style={styles.arrowBadge}>
+              <MaterialCommunityIcons
+                name="arrow-top-right"
+                size={14}
+                color="#374151"
+              />
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     </Animated.View>

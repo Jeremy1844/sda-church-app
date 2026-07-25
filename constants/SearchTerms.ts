@@ -1212,13 +1212,10 @@ export const getSearchableItems = (language: string): SearchableItem[] => {
     { ...labels.aboutSDA, icon: 'information', route: '/home/about-sda' },
     { ...labels.aboutHistory, icon: 'history', route: '/home/about-my-church' },
     { ...labels.team, icon: 'account-multiple', route: '/home/team' },
-    { ...labels.bulletin, icon: 'file-document-outline', route: '/home/bulletin' },
-    { ...labels.events, icon: 'calendar-star', route: '/community' },
     { ...labels.baptism, icon: 'water-outline', route: '/community/baptism' },
     { ...labels.worship, icon: 'church', route: '/community/worship' },
     { ...labels.fellowship, icon: 'account-group', route: '/community/fellowship' },
     { ...labels.roster, icon: 'clipboard-text-outline', route: '/community/roster' },
-    { ...labels.prayer, icon: 'hands-pray', route: '/community/prayer' },
   ];
 
   // Dynamically add all Bible books to the search list

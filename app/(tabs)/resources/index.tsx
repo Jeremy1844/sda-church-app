@@ -142,13 +142,6 @@ export default function ResourcesScreen() {
             onPress={() => openSabbathSchool(language)}
           />
 
-          <MenuCard
-            title={labels.library}
-            description={labels.librarySub}
-            icon="bookshelf"
-            iconColor={theme.colors.tertiary}
-            onPress={() => {}} // TODO: Implement library page
-          />
         </List.Section>
 
         <List.Section>

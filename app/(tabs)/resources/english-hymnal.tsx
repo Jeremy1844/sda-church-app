@@ -9,9 +9,10 @@ import { getSortedHymns, HydratedHymn, openHymnal } from '@/constants/EnglishHym
 import { openYouTubeSearch } from '@/constants/ExternalLinks';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
-import { NavigationStyles } from '@/styles/NavigationStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
 
 const uiLabels = {
   en: {
@@ -60,6 +61,8 @@ let savedSearchQuery = '';
 let lastProcessedRefresh = '';
 
 export default function HymnalScreen() {
+  const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const { language } = useContext(LanguageContext);

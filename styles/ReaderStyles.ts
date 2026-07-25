@@ -1,9 +1,14 @@
+import {
+  DEFAULT_TEXT_SCALE,
+  scaleTypographyMetric,
+  type TextScale,
+} from '@/constants/AppPreferences';
 import { StyleSheet } from 'react-native';
 
 /**
  * Shared styles for the Bible Reader and other immersive reading components.
  */
-export const ReaderStyles = StyleSheet.create({
+export const createReaderStyles = (textScale: TextScale) => StyleSheet.create({
   readerContainer: { flex: 1 },
   readerHeader: {
     flexDirection: 'row',
@@ -35,16 +40,20 @@ export const ReaderStyles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 6,
   },
-  selectorText: { fontWeight: '700', fontSize: 13, lineHeight: 18 },
+  selectorText: {
+    fontWeight: '700',
+    fontSize: scaleTypographyMetric(13, textScale),
+    lineHeight: scaleTypographyMetric(18, textScale),
+  },
   bibleScroll: { flex: 1 },
   bibleContent: { padding: 20, paddingBottom: 80 },
   verseText: {
-    fontSize: 19,
-    lineHeight: 30,
+    fontSize: scaleTypographyMetric(19, textScale),
+    lineHeight: scaleTypographyMetric(30, textScale),
     marginBottom: 14,
     fontFamily: 'Georgia, "Times New Roman", serif',
   },
-  verseNumber: { fontSize: 12, fontWeight: 'bold' },
+  verseNumber: { fontSize: scaleTypographyMetric(12, textScale), fontWeight: 'bold' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   // Selection Overlays / Modals
@@ -107,7 +116,7 @@ export const ReaderStyles = StyleSheet.create({
   },
   buttonPlaceholder: { width: 44 },
   navIcon: { margin: 0, width: 44 },
-  pillText: { fontSize: 15, fontWeight: '600' },
+  pillText: { fontSize: scaleTypographyMetric(15, textScale), fontWeight: '600' },
   floatingAudioButton: {
     position: 'absolute',
     right: 16,
@@ -115,8 +124,18 @@ export const ReaderStyles = StyleSheet.create({
   },
   scrollContent: { paddingHorizontal: 20 },
   loader: { marginTop: 50 },
-  heading: { fontSize: 20, fontWeight: '800', marginTop: 32, marginBottom: 8 },
-  verseContainer: { fontSize: 18, lineHeight: 28, marginBottom: 12 },
+  heading: {
+    fontSize: scaleTypographyMetric(20, textScale),
+    lineHeight: scaleTypographyMetric(28, textScale),
+    fontWeight: '800',
+    marginTop: 32,
+    marginBottom: 8,
+  },
+  verseContainer: {
+    fontSize: scaleTypographyMetric(18, textScale),
+    lineHeight: scaleTypographyMetric(28, textScale),
+    marginBottom: 12,
+  },
   liturgicalMarkerRow: {
     width: '100%',
     alignItems: 'stretch',
@@ -129,10 +148,19 @@ export const ReaderStyles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 2,
   },
-  hebrewSubtitle: { fontSize: 16, marginBottom: 16, opacity: 0.8 },
-  inlineHeading: { fontWeight: '700', fontSize: 14, lineHeight: 24 },
+  hebrewSubtitle: {
+    fontSize: scaleTypographyMetric(16, textScale),
+    lineHeight: scaleTypographyMetric(24, textScale),
+    marginBottom: 16,
+    opacity: 0.8,
+  },
+  inlineHeading: {
+    fontWeight: '700',
+    fontSize: scaleTypographyMetric(14, textScale),
+    lineHeight: scaleTypographyMetric(24, textScale),
+  },
   footnoteMarker: {
-    fontSize: 12,
+    fontSize: scaleTypographyMetric(12, textScale),
     fontWeight: 'bold',
     position: 'relative',
     top: -6,
@@ -142,13 +170,25 @@ export const ReaderStyles = StyleSheet.create({
   poemText: {},
   modalScroll: { padding: 16, maxHeight: 400 },
   detailSection: { marginBottom: 20 },
-  detailText: { fontSize: 16, lineHeight: 24 },
+  detailText: {
+    fontSize: scaleTypographyMetric(16, textScale),
+    lineHeight: scaleTypographyMetric(24, textScale),
+  },
   modalContent: { margin: 20, borderRadius: 12, maxHeight: '80%', overflow: 'hidden' },
   modalInner: { paddingVertical: 16, flexShrink: 1 },
-  title: { fontSize: 20, fontWeight: '800', lineHeight: 28 }, // Alias to prevent 'undefined' errors
+  title: {
+    fontSize: scaleTypographyMetric(20, textScale),
+    fontWeight: '800',
+    lineHeight: scaleTypographyMetric(28, textScale),
+  }, // Alias to prevent 'undefined' errors
   modalItem: {
     padding: 18,
     borderBottomWidth: 0.5,
   },
-  modalItemText: { fontSize: 16, lineHeight: 22 },
+  modalItemText: {
+    fontSize: scaleTypographyMetric(16, textScale),
+    lineHeight: scaleTypographyMetric(22, textScale),
+  },
 });
+
+export const ReaderStyles = createReaderStyles(DEFAULT_TEXT_SCALE);

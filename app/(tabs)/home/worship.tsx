@@ -1,8 +1,9 @@
 import { MenuCard } from '@/components/MenuCard';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
-import { NavigationStyles } from '@/styles/NavigationStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
@@ -109,6 +110,8 @@ const allLabels = {
 };
 
 export default function WorshipScreen() {
+  const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
   const theme = useAppTheme();
   const { language } = useContext(LanguageContext);
   const { backTo } = useLocalSearchParams();

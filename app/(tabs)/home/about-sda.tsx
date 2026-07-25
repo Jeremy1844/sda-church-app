@@ -1,8 +1,9 @@
 import { CHURCH_BUILDING_IMAGE_URL, openBeliefs } from '@/constants/ExternalLinks';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
-import { DocumentStyles } from '@/styles/DocumentStyles';
+import { createDocumentStyles } from '@/styles/DocumentStyles';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
@@ -12,6 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AboutSDAScreen() {
   const { language } = useContext(LanguageContext);
+  const { textScale } = useTextSize();
+  const DocumentStyles = createDocumentStyles(textScale);
   const { backTo } = useLocalSearchParams();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();

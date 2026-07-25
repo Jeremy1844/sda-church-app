@@ -1,6 +1,7 @@
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
-import { NavigationStyles } from '@/styles/NavigationStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -16,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
  * Please make sure the content syncs with README.md
  */
 export default function LegalScreen() {
+  const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
   const theme = useAppTheme();
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();

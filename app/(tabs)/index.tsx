@@ -13,6 +13,7 @@ import {
 } from '@/constants/ExternalLinks';
 import { LanguageContext, SupportedLanguage } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
 import {
@@ -27,7 +28,7 @@ import {
   SunsetCoordinates,
   SUNSET_LOCATION_PRIVACY_COPY,
 } from '@/services/SunsetLocationPolicy';
-import { NavigationStyles } from '@/styles/NavigationStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -52,6 +53,8 @@ type LocationRequestStatus = 'default' | 'requesting' | 'local' | 'unavailable';
 
 export default function HomeScreen() {
   const { language } = useContext(LanguageContext);
+  const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const outboundShare = useOutboundShare();

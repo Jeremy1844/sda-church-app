@@ -1,8 +1,9 @@
 import { MenuCard } from "@/components/MenuCard";
 import { LanguageContext } from "@/constants/LanguageContext";
 import { DESIGN_TOKENS } from "@/constants/Layout";
+import { useTextSize } from "@/constants/TextSizeContext";
 import { useAppTheme } from "@/constants/Themes";
-import { NavigationStyles } from "@/styles/NavigationStyles";
+import { createNavigationStyles } from "@/styles/NavigationStyles";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useContext } from "react";
 import { ScrollView } from "react-native";
@@ -11,6 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function LanguageScreen() {
   const { language, setLanguage } = useContext(LanguageContext);
+  const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
   const { backTo } = useLocalSearchParams();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();

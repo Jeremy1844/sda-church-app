@@ -10,7 +10,7 @@ import { useTextSize } from '@/constants/TextSizeContext';
 import { ROUTES } from '@/constants/Routes';
 import { ThemeContext, useAppTheme } from '@/constants/Themes';
 import packageJson from '@/package.json';
-import { NavigationStyles } from '@/styles/NavigationStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { router, Stack } from 'expo-router';
 import { useContext, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -79,6 +79,7 @@ export default function YouScreen() {
   const { onManualCheck, updateStatus } = useContext(UpdateContext);
   const { status: installStatus } = usePwaInstall();
   const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showTextSize, setShowTextSize] = useState(false);
   const insets = useSafeAreaInsets();

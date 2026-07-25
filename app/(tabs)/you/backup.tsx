@@ -12,7 +12,7 @@ import {
   serializeLocalBackup,
 } from '@/services/LocalBackup';
 import type { LocalBackupEnvelope } from '@/services/LocalBackup';
-import { NavigationStyles } from '@/styles/NavigationStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -98,6 +98,7 @@ function selectJsonFile(onSelect: (file: File) => void): void {
 export default function BackupScreen() {
   const { language } = useContext(LanguageContext);
   const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
   const theme = useAppTheme();
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();

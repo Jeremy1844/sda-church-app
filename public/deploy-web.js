@@ -1,32 +1,45 @@
-const child_process = require('child_process');
+const childProcess = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
-// Get arguments passed to this script (e.g., '--increment')
-console.log(process.argv);
-const args = process.argv.slice(2);
-console.log(args);
-const incrementFlag = args.includes('--increment') ? '--increment' : '';
+const repoRoot = path.resolve(__dirname, '..');
+const distPath = path.join(repoRoot, 'dist');
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
-// Command to run sync-version.js, passing the increment flag if present
-const syncVersionCommand =
-  `node "${path.resolve(__dirname, 'sync-version.js')}" ${incrementFlag}`.trim();
+function run(command, args) {
+  const result = childProcess.spawnSync(command, args, {
+    cwd: repoRoot,
+    stdio: 'inherit',
+    shell: false,
+  });
 
-// Full deployment command sequence
-const fullDeploymentCommand = `
-  ${syncVersionCommand} &&
-  rm -rf dist &&
-  npx expo export --platform web --clear &&
-  npx gh-pages -d dist --dotfiles
-`
-  .replace(/\s+/g, ' ')
-  .trim(); // Clean up extra whitespace
-
-console.log(`Executing deployment command: ${fullDeploymentCommand}`);
-
-try {
-  child_process.execSync(fullDeploymentCommand, { stdio: 'inherit' });
-  console.log('Deployment completed successfully.');
-} catch (error) {
-  console.error('Deployment failed:', error.message);
-  process.exit(1);
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`${command} ${args.join(' ')} exited with status ${result.status}`);
+  }
 }
+
+function deploy({ buildOnly = false } = {}) {
+  run(npmCommand, ['run', 'version:check']);
+  fs.rmSync(distPath, { recursive: true, force: true });
+  run(npxCommand, ['expo', 'export', '--platform', 'web', '--clear']);
+
+  if (!buildOnly) run(npxCommand, ['gh-pages', '-d', 'dist', '--dotfiles']);
+}
+
+if (require.main === module) {
+  try {
+    deploy({ buildOnly: process.argv.includes('--build-only') });
+    console.log(
+      process.argv.includes('--build-only')
+        ? 'Production web build completed successfully.'
+        : 'Deployment completed successfully.',
+    );
+  } catch (error) {
+    console.error('Deployment failed:', error.message);
+    process.exit(1);
+  }
+}
+
+module.exports = { deploy };

@@ -46,13 +46,9 @@ npm run deploy
 
 Once deployed, the app is live at: https://<username>.github.io/sda-church-app/
 
-For development accounts, you may use the increment flag to automatically update the patch
-version in `package.json` to quickly update the version number to trigger a new deploy on
-mobile. Please remember to reset the version number when raising the final pull request.
-
-```bash
-npm run deploy -- --increment
-```
+Version changes are release-maintainer work. Contributors must not increment the version
+as part of deployment or reset versions after testing; see `CONTRIBUTING.md` for the
+single-bump release workflow.
 
 ### Mobile Installation
 

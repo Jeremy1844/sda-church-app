@@ -1,113 +1,90 @@
-# Contributing & Release Workflow
+# Contributing and Release Workflow
 
-## Release & Versioning
+## Release policy
 
-This project uses **Semantic Versioning** (npm SemVer Guide). The `package.json` file serves as the single source of truth for the application version.
+The project uses Semantic Versioning. `package.json` is the version source of truth, and
+the release maintainer synchronizes `package-lock.json`, `app.json`, and `public/sw.js`
+with the explicit `version:sync` command.
 
-### Release Process
+For the 0.23.0 cycle, feature and bug-fix branches target `release/0.23.0`. The release
+maintainer owns one version bump on that release branch. Individual issue branches do not
+bump the application version.
 
-The versioning workflow is automated via GitHub Actions to ensure consistency across the mobile app, PWA, and repository tags.
+## Branch model
 
-1. **Create a Release Branch** from `release/x.x.x` on the primary [New-York-Chinese-Seventh-day-Adventist/sda-church-app](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app). If a release branch is not created, please ask an administrator to create one. You **must not PR to main as that skips GitHub Actions workflows**:
-
-   ```bash
-   git checkout main
-   git pull origin main
-   git checkout -b release/v0.8.2     # as an example
-   git checkout -b feature/your-feat-name
-   ```
-
-   Check the latest tag to determine the next version.
-
-2. **Update the Version and Push to fork**:
-   - Increment the `version` field in `package.json` manually (or use `npm version patch`).
-   - Push the changes: `git push -u origin release/v0.8.2`.
-   - The CI will validate the bump and automatically synchronize `app.json` and `sw.js` via automated commits.
-
-3. **Create a Pull Request**:
-   - Open a PR from your release branch → `New-York-Chinese-Seventh-day-Adventist/sda-church-app` corresponding release branch.
-   - The CI will validate that the version in `package.json` is higher than the current version on `main`.
-   - Complete the testing checklist and wait for reviews.
-
-4. **MAINTAINERS ONLY**:
-   - Once a `release/x.x.x` branch is ready for release, create a final PR and validate all GitHub Actions are successfully run, then approve and merge.
-
-## Branch Protection & Workflow
-
-```
-main (stable)
-  ↑
-  └─ release/0.2.0 (release candidate)
-       ↑
-       └─ feature/awesome-feature (work in progress)
+```text
+main (deployed, protected)
+  ^
+  +-- release/0.23.0 (release candidate)
+        ^
+        +-- bugfix/109-cjk-tabs
+        +-- feature/42-install-and-text-size
+        +-- chore/obs-01-version-sync
 ```
 
-### Branch Rules
+- Create one narrowly scoped branch per issue or approved maintenance task.
+- Start from the active `release/x.y.z` branch unless a maintainer names another base.
+- Open feature PRs against that release branch; do not change versions in those PRs.
+- Only maintainers open the final `release/x.y.z` to `main` PR.
+- Never push directly to `main`, `release/*`, or `gh-pages`.
 
-#### `main` Branch
+## Local workflow
 
-- **Protected branch** — Cannot push directly
-- **Requires PR** — All changes must come through a pull request
-- **Requires PR reviews** — Pull requests must be approved before merge
-- **Requires checks to pass** — CI/CD checks must pass
-- **Source**: Only from `release/**` branches
-- **Auto-tag on merge** — Automatically creates semantic version tags
+```powershell
+git fetch origin
+git switch release/0.23.0
+git pull --ff-only origin release/0.23.0
+git switch -c bugfix/issue-number-short-name
 
-#### `release/*` Branches
-
-- **Source**: Created from `main` for each release
-- **Naming convention**: `release/*` (e.g., `release/0.8.2` or `release/v1-beta`)
-- **Purpose**: Prepare the release and validate the version bump
-- **PR validation**:
-  - Enforces that the version in `package.json` has been incremented compared to `main`.
-  - Automatically synchronizes `sw.js` and `app.json` version strings if they drift.
-
-#### Feature/Work Branches
-
-- **Naming convention**: `feature/`, `bugfix/`, `chore/`, `docs/`, etc.
-- **Source**: Branch from `release/*` or directly from `main`
-- **PR**: Create PR to target release branch or main
-- **Target**: Should merge back to the appropriate release branch
-
-### Pull Request Workflow
-
-1. **Create a branch** from `release/0.2.0` or `main`
-2. **Make your changes** and commit with clear messages
-3. **Push to origin** and create a PR
-4. **Fill PR template**:
-   - Complete testing checklist
-   - Add description of changes
-5. **Await checks**:
-   - Workflow validates version tag
-   - Version bump is verified against `main`
-   - Reviews are requested
-6. **Merge**: Once approved, merge the PR
-7. **If merging to main**: Automatic release tag is created
-
-### Automated Checks
-
-#### `Release - Commit Validation` (`.github/workflows/release-validation.yml`)
-
-- **Enforce Version Change**: Compares `package.json` against `main` to ensure a version bump occurred.
-- **Auto-Sync**: Synchronizes `package-lock.json`, `sw.js`, and `app.json`. Pushes a fix commit to the PR branch if files drift from the version in `package.json`.
-
-#### `Release - Tagging and Sync` (`.github/workflows/release-tagging.yml`)
-
-- **Final Validation**: Ensures the merged version is unique.
-- **Automated Tagging**: Creates a new Git tag (e.g., `v0.8.2`) matching the `package.json` version.
-
-### Example Workflow
-
-```bash
-# 1. Start from main
-git checkout main && git pull origin main
-
-# 2. Create release branch
-git checkout -b release/0.2.0
-
-# 3. Bump version and push
-npm version minor
-git push -u origin release/0.2.0
+npm ci
+npm run check
 ```
 
-**Note**: All releases follow this same workflow. Create a `release/x.y.z` branch for any hotfixes or patch releases.
+Before requesting review:
+
+1. Confirm the issue remains open, unresolved, and available for contribution.
+2. Record the unmodified baseline and the failure being addressed.
+3. Keep generated `dist`, `.expo`, native build output, and credentials out of Git.
+4. Review the complete diff for scope, privacy, licensing, branding, and content changes.
+5. Complete the PR checklist with exact results and identify every omitted platform check.
+
+## Version preparation
+
+The release maintainer performs the release bump once:
+
+```powershell
+npm version 0.23.0 --no-git-tag-version
+npm run version:sync
+npm run version:check
+```
+
+That synchronization must be committed as a dedicated release-preparation change before
+or alongside the final release PR. CI validates version consistency but never writes to a
+contributor branch.
+
+## Automated workflows
+
+- `.github/workflows/pr-check.yml` validates that a final PR to `main` contains a valid,
+  strictly greater SemVer release version.
+- `.github/workflows/release-validation.yml` performs read-only release-branch checks. It
+  does not create or push synchronization commits.
+- `.github/workflows/deploy.yml` validates, tags, and deploys a maintainer-approved merge
+  to `main`.
+
+There is no `release-tagging.yml`; tagging is part of `deploy.yml`.
+
+## Deployment boundary
+
+Deployment is a maintainer-only operation. Contributors and automation running on pull
+requests must not call `npm run deploy`, write to `gh-pages`, create tags, or alter the
+production site. The maintainer must also confirm the canonical production URL before
+changing repository, package, manifest, or documentation URLs.
+
+## Platform and content claims
+
+- The PWA/web build is primary.
+- Android checks require the documented JDK/SDK environment when the change affects it.
+- iOS checks require supported macOS/Xcode hardware; never claim iOS testing from Windows.
+- Chinese and Spanish content changes require fluent review.
+- Scripture, doctrine, schedules, giving details, church media, and copyrighted material
+  require the appropriate church or rights-holder review.

@@ -7,9 +7,12 @@
 
 `PublicOperationsContracts.ts` and the synthetic fixture define strict version-1 public
 feeds for events, role-slot status, and bulletin announcements/references. Runtime parsing
-rejects unknown fields, credential-bearing or non-HTTPS registration links, invalid dates,
+rejects unknown fields, credential-bearing or non-HTTPS registration links, non-RFC3339
+timestamps, impossible calendar dates, duplicate entity IDs, oversized collections/strings,
 and schedule properties such as names, phone numbers, email addresses, or member tokens.
-The fixture is explicitly synthetic and is never imported by production UI.
+Event parsing requires the caller to supply an explicit list of exact approved registration
+hostnames; HTTPS alone is not treated as approval. The fixture uses only reserved synthetic
+data and is never imported by production UI.
 
 These contracts are an integration boundary, not authorization to expose real data.
 
@@ -35,6 +38,11 @@ The church must select the public source, owner, time zone, registration-link al
 expiry and correction behavior. The app stores no attendee or sign-up response. Event
 notifications remain a separate, explicit, opt-in capability with denial/revocation and
 browser support tests.
+
+The deployment adapter must pass its reviewed hostname allowlist into
+`parsePublicEventFeed`. Wildcards and implicit trust of subdomains are intentionally not
+supported; adding or changing a registration provider is therefore a reviewed deployment
+change.
 
 ## #66 prayer isolation gate
 

@@ -4,12 +4,20 @@
   "version": "0.22.0",
   "homepage": "https://codesammich.github.io/sda-church-app",
   "scripts": {
+    "build:web": "expo export --platform web --clear",
+    "check": "npm run check:contracts && npm run typecheck && npm test && npm run build:web",
+    "check:contracts": "npm run version:check && npm run check:routes && npm run check:layouts && npm run check:integrity",
+    "check:integrity": "node scripts/check-production-integrity.mjs",
+    "check:layouts": "node scripts/check-layout-contracts.mjs",
+    "check:release-version": "node scripts/check-release-version.mjs",
     "check:routes": "node public/check-route-contract.mjs",
+    "deploy": "node public/deploy-web.js",
+    "test": "node --test",
     "test:version": "node --test public/sync-version.test.js",
+    "typecheck": "tsc --noEmit",
     "version:check": "node public/sync-version.js --check",
     "version:sync": "node public/sync-version.js --sync",
-    "web": "expo start --web",
-    "deploy": "node public/deploy-web.js $@"
+    "web": "expo start --web"
   },
   "dependencies": {
     "@expo/metro-runtime": "~55.0.11",

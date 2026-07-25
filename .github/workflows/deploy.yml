@@ -2,65 +2,51 @@ name: Deploy and Tag
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy-and-tag:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version: 24
+          cache: npm
 
-      - name: Sync and Tag from package.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Rewrite the remote URL to include the authentication token
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
-
-          VERSION=$(jq -r .version package.json)
-          TAG="v$VERSION"
-          echo "Version identified: $VERSION"
-
-          npm install --package-lock-only
-          npm run sync-version
-
-          git add app.json public/sw.js package-lock.json
-
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: sync configuration files for $TAG [skip ci]"
-            git push origin main
-          else
-            echo "Configuration files already in sync."
-          fi
-
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping tag creation."
-          else
-            git tag "$TAG"
-            git push origin "$TAG"
-            echo "Successfully tagged $TAG"
-          fi
-
-      - name: Install dependencies
+      - name: Install locked dependencies
         run: npm ci
 
-      - name: Deploy to GitHub Pages
+      - name: Run the complete quality gate
+        run: npm run check
+
+      - name: Create the immutable release tag
         run: |
-          npm run deploy
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          if git rev-parse --verify --quiet "refs/tags/${TAG}"; then
+            if [ "$(git rev-list -n 1 "${TAG}")" != "$(git rev-parse HEAD)" ]; then
+              echo "::error::Tag ${TAG} already points to another commit."
+              exit 1
+            fi
+            echo "Tag ${TAG} already points to this commit."
+          else
+            git tag "${TAG}"
+            git push origin "${TAG}"
+          fi
+
+      - name: Deploy GitHub Pages
+        run: npm run deploy

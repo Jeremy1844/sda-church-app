@@ -1,35 +1,32 @@
-name: PR Version Check
+name: Final Release Version Check
 
 on:
   pull_request:
-    types: [opened, synchronize]
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  enforce-version:
+  enforce-release-version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check for version change
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify a strictly greater release version
         run: |
-          set -euo pipefail
+          git fetch --no-tags origin main
+          npm run check:release-version -- origin/main
 
-          git fetch origin main
-          BASE_VER=$(git show origin/main:package.json | jq -r .version)
-          HEAD_VER=$(jq -r .version package.json)
-
-          echo "Base version (main): $BASE_VER"
-          echo "PR version: $HEAD_VER"
-
-          if [ "$BASE_VER" == "$HEAD_VER" ]; then
-            echo "::error::Validation Failed: The version in package.json has not been changed."
-            exit 1
-          fi
-          echo "Validation Passed."
+      - name: Verify synchronized version targets
+        run: npm run version:check

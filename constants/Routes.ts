@@ -11,6 +11,7 @@ export const ROUTES = {
   resources: '/resources',
   you: '/you',
   language: '/you/language',
+  backup: '/you/backup',
   englishHymnal: '/resources/english-hymnal',
   hymnalSelection: '/resources/hymnal-selection',
   give: '/home/give',

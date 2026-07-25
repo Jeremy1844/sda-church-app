@@ -7,6 +7,7 @@ import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
 import { usePwaInstall } from '@/constants/PwaInstallContext';
 import { useTextSize } from '@/constants/TextSizeContext';
+import { ROUTES } from '@/constants/Routes';
 import { ThemeContext, useAppTheme } from '@/constants/Themes';
 import packageJson from '@/package.json';
 import { NavigationStyles } from '@/styles/NavigationStyles';
@@ -93,6 +94,16 @@ export default function YouScreen() {
     standalone: 'The app is already open in standalone mode.',
     unavailable: 'Open capability-based fallback guidance for this browser.',
   }[installStatus];
+  const backupLabels =
+    language === 'en'
+      ? {
+          title: 'Backup & Restore',
+          description: 'Download, restore, or delete local settings',
+        }
+      : {
+          title: 'Backup & Restore (English only)',
+          description: 'Local settings backup is currently provided in English only',
+        };
 
   return (
     <>
@@ -159,6 +170,18 @@ export default function YouScreen() {
               onPress={() => setShowInstallGuide(true)}
             />
           )}
+          <MenuCard
+            title={backupLabels.title}
+            description={backupLabels.description}
+            icon="backup-restore"
+            iconColor={theme.colors.tertiary}
+            onPress={() =>
+              router.push({
+                pathname: ROUTES.backup,
+                params: { backTo: ROUTES.you },
+              } as any)
+            }
+          />
           <MenuCard
             title={labels.privacy}
             description={labels.privacySub}

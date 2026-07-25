@@ -20,6 +20,7 @@ import {
   type BeforeInstallPromptEventLike,
   type PwaInstallRequestResult,
 } from '@/constants/PwaInstallContext';
+import { LANGUAGE_STORAGE_KEY, SETUP_STORAGE_KEY } from '@/constants/StorageKeys';
 import { TextSizeContext } from '@/constants/TextSizeContext';
 import {
   getAppTheme,
@@ -331,9 +332,9 @@ export default function RootLayout() {
     async function prepare() {
       try {
         const [savedLang, savedTheme, setupDone, savedTextScale] = await Promise.all([
-          AsyncStorage.getItem('user-language'),
+          AsyncStorage.getItem(LANGUAGE_STORAGE_KEY),
           AsyncStorage.getItem(THEME_STORAGE_KEY),
-          AsyncStorage.getItem('has-completed-setup'),
+          AsyncStorage.getItem(SETUP_STORAGE_KEY),
           AsyncStorage.getItem(TEXT_SCALE_STORAGE_KEY),
         ]);
 
@@ -365,7 +366,7 @@ export default function RootLayout() {
 
   const handleSetLanguage = async (lang: SupportedLanguage) => {
     setLanguage(lang);
-    await AsyncStorage.setItem('user-language', lang);
+    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
   };
 
   const handleToggleTheme = async (val?: any) => {
@@ -390,8 +391,8 @@ export default function RootLayout() {
     // Persist current settings when completing setup to ensure they stick on reload
     // even if the user didn't explicitly change them from system defaults.
     await Promise.all([
-      AsyncStorage.setItem('has-completed-setup', 'true'),
-      AsyncStorage.setItem('user-language', language),
+      AsyncStorage.setItem(SETUP_STORAGE_KEY, 'true'),
+      AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language),
       AsyncStorage.setItem(THEME_STORAGE_KEY, isDark ? THEME_DARK : THEME_LIGHT),
       AsyncStorage.setItem(TEXT_SCALE_STORAGE_KEY, serializeTextScale(textScale)),
     ]);

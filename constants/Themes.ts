@@ -11,6 +11,9 @@ import {
   scaleTypographyRecord,
   type TextScale,
 } from './AppPreferences';
+import { THEME_STORAGE_KEY } from './StorageKeys';
+
+export { THEME_STORAGE_KEY } from './StorageKeys';
 
 /**
  * Material Design 3 Theme definitions for both React Native Paper and React Navigation.
@@ -19,7 +22,6 @@ import {
  * Ref: https://callstack.github.io/react-native-paper/docs/guides/theming
  */
 
-export const THEME_STORAGE_KEY = 'user-theme';
 export const THEME_DARK = 'dark';
 export const THEME_LIGHT = 'light';
 

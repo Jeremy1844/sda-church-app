@@ -8,6 +8,7 @@ export default function YouStackLayout() {
       <Stack.Screen name="index" />
       {/* Screens pushed onto this stack */}
       <Stack.Screen name="language" />
+      <Stack.Screen name="backup" />
       <Stack.Screen name="privacy" />
       <Stack.Screen name="legal" />
     </Stack>

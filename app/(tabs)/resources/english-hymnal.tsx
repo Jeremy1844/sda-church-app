@@ -110,7 +110,7 @@ export default function HymnalScreen() {
     }
 
     return () => {
-      if (scrollTimer) clearTimeout(scrollTimer);
+      if (scrollTimer !== null) clearTimeout(scrollTimer);
     };
   }, [hymnNum, allHymns]);
 

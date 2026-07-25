@@ -54,7 +54,7 @@ export const GlobalHeader = (props: any) => {
   });
 
   const cancelBlurTimer = () => {
-    if (blurTimerRef.current) {
+    if (blurTimerRef.current !== null) {
       clearTimeout(blurTimerRef.current);
       blurTimerRef.current = null;
     }

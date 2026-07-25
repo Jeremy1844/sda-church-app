@@ -12,6 +12,7 @@
     "check:release-version": "node scripts/check-release-version.mjs",
     "check:routes": "node public/check-route-contract.mjs",
     "deploy": "node public/deploy-web.js",
+    "refresh:latest-activity": "node scripts/refresh-latest-activity.mjs",
     "test": "node --test",
     "test:version": "node --test public/sync-version.test.js",
     "typecheck": "tsc --noEmit",

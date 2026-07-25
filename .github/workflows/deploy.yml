@@ -48,5 +48,8 @@ jobs:
             git push origin "${TAG}"
           fi
 
+      - name: Refresh sanitized YouTube activity
+        run: npm run refresh:latest-activity -- --allow-stale
+
       - name: Deploy GitHub Pages
         run: npm run deploy

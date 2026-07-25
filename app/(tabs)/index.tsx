@@ -4,12 +4,17 @@ import {
   CHURCH_LATITUDE,
   CHURCH_LONGITUDE,
   getSunsetApiUrl,
+  openURL,
   openSabbathStream,
 } from '@/constants/ExternalLinks';
 import { LanguageContext, SupportedLanguage } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
+import {
+  fetchLatestActivity,
+  LatestActivity,
+} from '@/services/LatestActivityService';
 import { NavigationStyles } from '@/styles/NavigationStyles';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -147,6 +152,7 @@ export default function HomeScreen() {
     verse: number;
     dateKey: string;
   } | null>(null);
+  const [latestActivity, setLatestActivity] = useState<LatestActivity | null>(null);
 
   const [isSabbath, setIsSabbath] = useState(false);
   const [countdown, setCountdown] = useState('');
@@ -160,6 +166,18 @@ export default function HomeScreen() {
 
   const VOTD_CONFIG_KEY = 'votd_selection_config';
   const VOTD_CACHE_KEY = `votd_cache_${language}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchLatestActivity(controller.signal)
+      .then(setLatestActivity)
+      .catch((error) => {
+        if (error?.name !== 'AbortError') {
+          console.warn('Latest YouTube activity is unavailable; using channel fallback.');
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   // Sabbath Countdown Logic
   useEffect(() => {
@@ -566,15 +584,48 @@ export default function HomeScreen() {
 
           {/* This Week — 2-column pastel grid */}
           <View style={styles.grid}>
-            <GridMenuCard
-              title={labels.livestream}
-              subtitle={(labels as any).liveNow}
-              icon="youtube"
-              color={theme.colors.cardBgColors.livestream}
-              iconColor={theme.colors.iconColors.livestream}
-              onPress={openSabbathStream}
-              style={styles.gridCell}
-            />
+            {latestActivity ? (
+              <Card
+                mode="outlined"
+                onPress={() =>
+                  openURL(
+                    latestActivity.url,
+                    'Error',
+                    'Could not open the latest YouTube activity.',
+                  )
+                }
+                accessibilityLabel={`Open on YouTube: ${latestActivity.title}`}
+                style={styles.activityCard}
+              >
+                <Card.Cover
+                  source={{ uri: latestActivity.thumbnailUrl }}
+                  accessibilityLabel={latestActivity.title}
+                />
+                <Card.Content style={styles.activityContent}>
+                  <MaterialCommunityIcons
+                    name="youtube"
+                    size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
+                    color={theme.colors.iconColors.livestream}
+                  />
+                  <Text
+                    variant="titleMedium"
+                    numberOfLines={2}
+                    style={[styles.activityTitle, { color: theme.colors.onSurface }]}
+                  >
+                    {latestActivity.title}
+                  </Text>
+                </Card.Content>
+              </Card>
+            ) : (
+              <GridMenuCard
+                title={labels.livestream}
+                icon="youtube"
+                color={theme.colors.cardBgColors.livestream}
+                iconColor={theme.colors.iconColors.livestream}
+                onPress={openSabbathStream}
+                style={styles.activityCard}
+              />
+            )}
             <GridMenuCard
               title={labels.give}
               icon="hand-heart-outline"
@@ -649,5 +700,20 @@ const styles = StyleSheet.create({
   gridCell: {
     flexBasis: '47.5%',
     flexGrow: 1,
+  },
+  activityCard: {
+    flexBasis: '100%',
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  activityContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 16,
+  },
+  activityTitle: {
+    flex: 1,
   },
 });

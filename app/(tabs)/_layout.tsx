@@ -57,7 +57,7 @@ export default function TabLayout() {
     Animated.timing(menuAnim, {
       toValue: visible ? 1 : 0,
       duration: 250,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   };
 

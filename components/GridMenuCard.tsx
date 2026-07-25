@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useRef } from 'react';
 import {
   Animated,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -43,7 +44,7 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
     if (disabled) return;
     Animated.spring(scaleAnim, {
       toValue: 0.96,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
       speed: 30,
       bounciness: 4,
     }).start();
@@ -53,7 +54,7 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
     if (disabled) return;
     Animated.spring(scaleAnim, {
       toValue: 1,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
       speed: 20,
       bounciness: 6,
     }).start();

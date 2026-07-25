@@ -36,7 +36,7 @@ jobs:
       - name: Verify deployment input is committed and reproducible
         run: git diff --exit-code
 
-      - name: Create the immutable release tag
+      - name: Preflight the immutable release tag
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}"
@@ -46,10 +46,28 @@ jobs:
               exit 1
             fi
             echo "Tag ${TAG} already points to this commit."
+          fi
+
+      - name: Configure authenticated Pages publishing
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy GitHub Pages
+        run: npm run deploy
+        env:
+          GH_PAGES_AUTHOR: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+      - name: Create the immutable release tag after deployment
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          if git rev-parse --verify --quiet "refs/tags/${TAG}"; then
+            echo "Tag ${TAG} already points to this commit."
           else
             git tag "${TAG}"
             git push origin "${TAG}"
           fi
-
-      - name: Deploy GitHub Pages
-        run: npm run deploy

@@ -6,7 +6,8 @@
   "scripts": {
     "build:web": "expo export --platform web --clear && node scripts/finalize-web-build.mjs",
     "check": "npm run check:contracts && npm run doctor && npm run typecheck && npm test && npm run build:web",
-    "check:contracts": "npm run version:check && npm run check:routes && npm run check:layouts && npm run check:integrity && npm run check:locales && npm run check:links",
+    "check:contracts": "npm run version:check && npm run check:routes && npm run check:layouts && npm run check:integrity && npm run check:locales && npm run check:links && npm run check:fonts",
+    "check:fonts": "node docs/tools/check-font-coverage.js",
     "check:integrity": "node scripts/check-production-integrity.mjs",
     "check:layouts": "node scripts/check-layout-contracts.mjs",
     "check:links": "node scripts/check-external-links.mjs",

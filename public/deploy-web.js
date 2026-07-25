@@ -25,7 +25,12 @@ function deploy({ buildOnly = false } = {}) {
   fs.rmSync(distPath, { recursive: true, force: true });
   run(npmCommand, ['run', 'build:web']);
 
-  if (!buildOnly) run(npxCommand, ['gh-pages', '-d', 'dist', '--dotfiles']);
+  if (!buildOnly) {
+    const ghPagesArguments = ['gh-pages', '-d', 'dist', '--dotfiles'];
+    const author = process.env.GH_PAGES_AUTHOR?.trim();
+    if (author) ghPagesArguments.push('-u', author);
+    run(npxCommand, ghPagesArguments);
+  }
 }
 
 if (require.main === module) {

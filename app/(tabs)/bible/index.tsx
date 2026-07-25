@@ -12,6 +12,7 @@ import {
   Share,
   StyleSheet,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import {
@@ -26,7 +27,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LanguageContext } from '@/constants/LanguageContext';
-import { DESIGN_TOKENS } from '@/constants/Layout';
+import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import * as SearchTerms from '@/constants/SearchTerms';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
@@ -35,8 +36,6 @@ import { ReaderStyles } from '@/styles/ReaderStyles';
 
 // Generalizing dimensions to ensure responsiveness across iPhone/Tablet
 const DOCK_HEIGHT = 60;
-// This margin should match the approximate height of the bottom tab bar to ensure they sit flush.
-const DOCK_BOTTOM_MARGIN = 49;
 const FOOTER_PADDDING_OFFSET = 150;
 
 const BIBLE_TRANS_KEY = 'user-bible-translation';
@@ -125,6 +124,8 @@ const uiLabels = {
 export default function BibleScreen() {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const dockBottomMargin = getBottomTabContentHeight(fontScale);
   const { language } = useContext(LanguageContext);
   const { menuAnim, setMenuVisible: setGlobalMenuVisible } = useContext(UIStateContext);
   const [menuVisible, setMenuVisible] = useState(true);
@@ -133,7 +134,7 @@ export default function BibleScreen() {
     inputRange: [0, 1],
     outputRange: [
       DOCK_HEIGHT + insets.bottom,
-      DOCK_HEIGHT + DOCK_BOTTOM_MARGIN + insets.bottom,
+      DOCK_HEIGHT + dockBottomMargin + insets.bottom,
     ],
   });
 
@@ -1190,12 +1191,12 @@ export default function BibleScreen() {
                 bottom: animatedDockHeight.interpolate({
                   inputRange: [
                     DOCK_HEIGHT + insets.bottom,
-                    DOCK_HEIGHT + DOCK_BOTTOM_MARGIN + insets.bottom,
+                    DOCK_HEIGHT + dockBottomMargin + insets.bottom,
                   ],
                   outputRange: [
                     DOCK_HEIGHT + insets.bottom + 16 + (selectedVerses.size > 0 ? 56 : 0),
                     DOCK_HEIGHT +
-                      DOCK_BOTTOM_MARGIN +
+                      dockBottomMargin +
                       insets.bottom +
                       16 +
                       (selectedVerses.size > 0 ? 56 : 0),

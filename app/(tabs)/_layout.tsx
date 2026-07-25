@@ -1,12 +1,19 @@
 import { GlobalHeader, UIStateContext } from '@/components/GlobalHeader';
 import { LanguageContext } from '@/constants/LanguageContext';
-import { DESIGN_TOKENS } from '@/constants/Layout';
+import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import { useAppTheme } from '@/constants/Themes';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { Tabs, router } from 'expo-router';
 import React, { useContext, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -24,7 +31,6 @@ function TabBarIcon(props: {
     <MaterialCommunityIcons
       name={iconName}
       size={DESIGN_TOKENS.ICON_SIZE_TAB}
-      style={{ marginBottom: -3 }}
       color={props.color}
     />
   );
@@ -33,6 +39,9 @@ function TabBarIcon(props: {
 export default function TabLayout() {
   const theme = useAppTheme();
   const { language } = useContext(LanguageContext);
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const tabBarContentHeight = getBottomTabContentHeight(fontScale);
 
   // Reader Mode state shared with child screens
   const menuAnim = useRef(new Animated.Value(1)).current;
@@ -102,10 +111,25 @@ export default function TabLayout() {
         screenOptions={{
           tabBarActiveTintColor: theme.colors.onBackground,
           tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+          tabBarAllowFontScaling: true,
+          tabBarLabelStyle: {
+            // Use each platform's system family so CJK labels intentionally resolve to
+            // its native fallback font instead of the bundled Latin-only Noto Sans.
+            fontFamily: Platform.select({
+              android: 'sans-serif',
+              ios: 'System',
+              web: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+            }),
+            lineHeight: DESIGN_TOKENS.BOTTOM_TAB_LABEL_LINE_HEIGHT,
+            paddingBottom: DESIGN_TOKENS.BOTTOM_TAB_LABEL_BOTTOM_PADDING,
+          },
           headerTransparent: true,
           header: (props) => <GlobalHeader {...props} />,
           tabBarStyle: {
             position: 'absolute',
+            // React Navigation treats an explicit height as inclusive of the safe area.
+            // Add the bottom inset here to preserve the full label/touch-target region.
+            height: tabBarContentHeight + insets.bottom,
             elevation: 0,
             backgroundColor: 'transparent',
             borderTopWidth: 0,

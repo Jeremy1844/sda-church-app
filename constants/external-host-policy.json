@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "allowedHosts": [
+    { "host": "adventist.org", "purpose": "denominational-information" },
+    { "host": "adventistgiving.org", "purpose": "existing-primary-giving-handoff" },
+    { "host": "api.sunrise-sunset.org", "purpose": "public-sunset-api" },
+    { "host": "apps.apple.com", "purpose": "existing-app-store-handoff" },
+    { "host": "assets.adventistconnect.org", "purpose": "existing-church-public-media" },
+    { "host": "atlantic-union.org", "purpose": "denominational-information" },
+    { "host": "gnyc.org", "purpose": "conference-information" },
+    { "host": "open.spotify.com", "purpose": "existing-public-audio-handoff" },
+    { "host": "play.google.com", "purpose": "existing-app-store-handoff" },
+    { "host": "sabbath-school.adventech.io", "purpose": "official-link-only-resource" },
+    { "host": "sspmadventist.org", "purpose": "official-resource-partnership-reference" },
+    { "host": "us06web.zoom.us", "purpose": "existing-public-class-handoff" },
+    { "host": "www.google.com", "purpose": "maps-handoff" },
+    { "host": "www.youtube.com", "purpose": "existing-public-video-handoff" }
+  ],
+  "disabledIntegrations": [
+    "alternate-giving",
+    "church-hymnal-material",
+    "community-group-links",
+    "in-app-messaging",
+    "speech-recognition"
+  ]
+}

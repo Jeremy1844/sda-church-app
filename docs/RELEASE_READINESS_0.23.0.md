@@ -115,19 +115,23 @@ the release owner chooses one.
 
 | Finalization field | Value |
 | --- | --- |
-| Final integration commit | `PENDING_FINAL_INTEGRATION_COMMIT` |
-| Clean `npm ci` | `PENDING_FINAL_RUN` |
-| Complete `npm run check` | `PENDING_FINAL_RUN` |
-| Node test count | `PENDING_FINAL_RUN` |
-| Expo Doctor result | `PENDING_FINAL_RUN` |
-| Static export / generated route count | `PENDING_FINAL_RUN` |
-| Injected service-worker URL count | `PENDING_FINAL_RUN` |
-| Release-version comparison | `PENDING_FINAL_RUN` |
+| Validated implementation commit before evidence-only documentation | `034c0cb0457f728a00113ae8c8965007905d784f` |
+| Clean `npm ci` | Passed on Windows; 745 packages installed and 746 audited from the committed lockfile |
+| Complete `npm run check` | Passed: contracts, Expo Doctor, TypeScript, Node tests, and production web export |
+| Node test count | 122 passed, 0 failed, 0 skipped |
+| Expo Doctor result | 19/19 checks passed |
+| Static export / generated route count | 49 routes |
+| Injected service-worker URL count | 100 unique same-origin app-shell URLs; root and manifest included |
+| Release-version comparison | Passed against `origin/main`: `0.22.0` -> `0.23.0` |
+| `git diff --check` | Passed |
+| Clean worktree | Confirmed at the validated implementation commit; final evidence/archive HEAD is recorded externally |
+| `npm audit --omit=dev` | Reported 26 advisories: 8 moderate, 18 high, 0 critical; no automatic force-fix was run |
+| Scoped local browser acceptance | Production export passed Home/Bible/Resources/You navigation, supported-language `<html lang>` changes, persistent 100%/125%/150% text size, honest install fallback, live VOTD/sunset states and attribution, exact hymn 108 navigation, service-worker registration/activation, and an unvisited nested route after the server stopped. No application runtime error remained; two React Native web fallback warnings from the framework were observed. This does not replace the itemized PV matrix. |
 | Production deployment / tag | Not performed; maintainer-only action |
 | Physical/human matrix | Pending as itemized above |
 | Canonical production URL | Pending maintainer decision |
-| Source archive and SHA-256 | `PENDING_FINAL_PACKAGE` |
+| Source archive and SHA-256 | Final archive HEAD and hashes are recorded in the external implementation report and `SHA256SUMS.txt` |
 
-The root integration owner must replace the `PENDING_*` fields only with evidence from
-the final committed tree. A passing local command cannot change an **EB**, **AC**, or
-**PV** gate into completion.
+These local results do not change an **EB**, **AC**, or **PV** gate into completion. The
+external report records the final evidence-only commit and source-archive digest without
+creating a self-referential tracked artifact.

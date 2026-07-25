@@ -1,240 +1,149 @@
 # PWA Capability Audit and Decision Matrix
 
-**Issue:** [#72 — Brainstorm PWA ideas](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/72)
+**Issue:** [#72 - Brainstorm PWA ideas](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/72)
 
 **Reviewed:** 2026-07-25
 
-**Scope:** Research and follow-up recommendations only; this audit does not enable any new
-capability.
+**Release context:** local 0.23.0 integration candidate. This document records repository
+behavior and remaining acceptance gates; it is not evidence of a production deployment or
+of testing on hardware that was not used.
 
-## Remediation update: consent-first location
+## Outcome
 
-Implemented locally on 2026-07-25. Home now starts with Elmhurst sunset times and does not
-call browser geolocation on load. “Use my location” first opens an English-only disclosure
-that names `api.sunrise-sunset.org`, explains the latitude/longitude transfer, and states
-that the app does not retain or log coordinates. Only a second “Continue” action can open
-the browser permission prompt. Denial, timeout, invalid coordinates, and unsupported
-geolocation retain Elmhurst times with retry and browser-settings guidance. Device
-coordinates remain in component memory only and can be cleared with “Use Elmhurst times.”
+Keep the PWA as the primary distribution model and use progressive enhancement for
+browser capabilities. The local candidate now has the safety foundations selected by the
+original audit:
 
-Chinese and Spanish versions of the new privacy copy remain gated on fluent human review.
-Automated policy checks are complete; allow/deny/revoke/retry/reload behavior still requires
-the physical-browser matrix recorded below.
+- capability-driven install help and persistent 100%, 125%, and 150% text sizing;
+- a deterministic, build-generated app-shell cache limited to exact build-owned URLs;
+- portable local backup/restore for four non-sensitive settings;
+- a maintained `expo-audio` reader implementation;
+- outbound share with clipboard and manual-copy fallbacks;
+- consent-first sunset geolocation with Elmhurst as the complete no-permission fallback;
+- a checked-in, sanitized latest-activity artifact with local artwork; and
+- explicit external-host and private-path policies.
 
-## Executive decision
+These changes do not complete every idea in #72. Bible/audio downloads, Media Session and
+locked-screen controls, push, speech recognition, direct file handles, background sync,
+and a permission-management dashboard remain deliberately absent. Physical browser and
+device acceptance is still required for install, offline/update, location, share, text
+scaling, and audio behavior.
 
-Keep the PWA as the primary distribution model. The web platform already covers the
-church app's core needs, but support is not uniform enough to treat every browser API as a
-required dependency.
-
-- Proceed with deterministic app-shell offline support, feature-detected installation
-  guidance, portable local-data import/export, consent-first location, and Media Session
-  controls after the audio dependency is modernized.
-- Keep outbound verse sharing, but add a visible copy fallback instead of assuming a
-  system share sheet exists.
-- Defer push notifications until the public event feed, privacy rules, subscription
-  retention, and an operational owner exist.
-- Keep speech recognition behind [#73](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/73)'s
-  privacy gate. It must never be required to use search.
-- Do not make direct file-system handles, share-target registration, background sync, or
-  browser-specific install APIs part of the core experience. Portable web fallbacks are
-  simpler and cover more congregants.
-
-The decision rule is progressive enhancement: detect the capability, explain why it is
-useful before requesting access, and retain a complete non-permission fallback. Do not use
-user-agent strings to decide whether a feature is available.
+The decision rule remains: feature-detect, explain a permission before requesting it, and
+retain a complete non-permission fallback. User-agent strings must not decide whether a
+core feature works.
 
 ## Current implementation
 
-| Area | Repository evidence | Current behavior and gap |
+| Area | Repository evidence | Implemented behavior | Remaining gate or non-claim |
+| --- | --- | --- | --- |
+| Installation and text size | [`app/_layout.tsx`](../app/_layout.tsx), [`components/InitialSetup.tsx`](../components/InitialSetup.tsx), [`components/TextSizeDialog.tsx`](../components/TextSizeDialog.tsx), [`constants/AppPreferences.mjs`](../constants/AppPreferences.mjs) | Detects standalone mode and the optional `beforeinstallprompt` event, keeps browser-use available, exposes install help again under You, and persists 100%/125%/150% text size. Theme typography and fixed-size production text are covered by a source contract. | #42 is not fully closed: current, original/licensed browser illustrations and fluent review of new `zh`, `zh-cn`, and `es` guidance are still required. Keyboard, screen-reader, enlarged-text, browser, and installed-PWA review remains physical/human acceptance. |
+| Service worker and updates | [`public/sw.js`](../public/sw.js), [`scripts/web-build-manifest.mjs`](../scripts/web-build-manifest.mjs), [`scripts/finalize-web-build.mjs`](../scripts/finalize-web-build.mjs), [`app/_layout.tsx`](../app/_layout.tsx) | The checked-in worker intentionally contains an empty manifest placeholder. The production export replaces it with a deterministic list of exact, same-origin, build-owned URLs. Exact manifest URLs are cacheable. A safe extensionless navigation is intercepted only when its exported `.html` counterpart is in that manifest; the alias is never written, and offline fallback uses the cached route document or root. Sensitive/other-app, encoded or backslash, cross-origin, error, opaque, and private/no-store traffic is rejected. Activation removes only older `sda-church-v*` caches and preserves unrelated origin caches. | Automated source/build checks do not prove airplane-mode cold start, update while open, rollback, storage pressure, or corrupted-cache recovery on real browsers. The shell cache is not an offline Bible or audio download manager. |
+| Local storage and backup | [`services/LocalBackupCore.js`](../services/LocalBackupCore.js), [`services/LocalBackup.ts`](../services/LocalBackup.ts), [`app/(tabs)/you/backup.tsx`](<../app/(tabs)/you/backup.tsx>), [ADR 0006](./adr/0006-local-settings-backup-v1.md) | Web users can export, preview, validate, restore, and delete a strict version-1 JSON envelope for language, theme, setup completion, and text size. The 64 KiB cap, exact schema, SHA-256 integrity check, allowlisted keys, transactional writes, and rollback are tested. No account, OAuth, upload, or remote write is introduced. | This is settings transfer, not a complete device backup. Verse-of-the-Day state, Bible position, caches, notes, highlights, bookmarks, exported files, and future keys are excluded. Native file backup and personal devotional data require separate design and acceptance. |
+| Bible data and reader integrity | [`services/BibleRepository.ts`](../services/BibleRepository.ts), [`services/BibleNavigation.ts`](../services/BibleNavigation.ts), [`services/BibleRequestIntegrity.ts`](../services/BibleRequestIntegrity.ts), [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>) | Stable identifiers and previous/next navigation are isolated from the HelloAO adapter. Book and chapter requests carry abort signals, and stale results cannot overwrite a newer reader selection or loading state. | The online HelloAO reader remains the production source. No whole-translation download, new provider, original-language data, or rights decision is implied. |
+| Audio | [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>), [`package.json`](../package.json), [ADR 0003](./adr/0003-bible-data-offline-and-reader-boundaries.md) | Bible audio uses maintained `expo-audio`; foreground play/pause and chapter behavior remain available. | There is no Media Session metadata/action layer, seek scrubber, offline audio, or guaranteed background/locked-screen playback. Those require metadata and rights review plus real iOS, Android, desktop, interruption, Bluetooth, and lock-screen tests. |
+| Outbound share | [`services/OutboundSharePolicy.ts`](../services/OutboundSharePolicy.ts), [`components/OutboundShareFeedback.tsx`](../components/OutboundShareFeedback.tsx) | User-initiated Web Share is used when available. Unsupported or failed sharing falls back to exact-text clipboard copy, then to selectable manual-copy text. User cancellation is not falsely reported as successful copying. | System targets vary by browser and OS. There is no inbound Web Share Target registration, and Scripture-text sharing remains subject to translation rights. |
+| Location permission | [`services/SunsetLocationPolicy.ts`](../services/SunsetLocationPolicy.ts), [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>), [ADR 0007](./adr/0007-consent-first-sunset-location.md) | Home starts with Elmhurst and makes no load-time geolocation request. A user must choose "Use my location," read an English disclosure naming `api.sunrise-sunset.org`, and continue before the browser prompt. Coordinates stay in memory, device-coordinate requests use `no-store`, API status/date payloads are validated, and every denial/error/reset path returns to Elmhurst. Calendar dates are formatted locally rather than from UTC slicing. | Fluent Chinese and Spanish privacy copy and real-browser allow/deny/dismiss/revoke/timeout/retry/reload/installed-mode testing remain gated. Browser permission stores are outside app storage. |
+| Latest public activity | [`services/LatestActivityService.ts`](../services/LatestActivityService.ts), [`public/data/latest-activity.json`](../public/data/latest-activity.json), [`scripts/refresh-latest-activity.mjs`](../scripts/refresh-latest-activity.mjs) | Home consumes a schema-validated, sanitized, checked-in artifact for the approved channel and uses bundled local artwork, avoiding an automatic third-party thumbnail request. The UI calls it latest activity rather than claiming a verified live stream. | Feed refresh is a build/maintainer operation, not a browser RSS fetch. A stale or unavailable artifact must retain the ordinary YouTube handoff. This does not prove live status. |
+| External hosts and privacy | [`constants/external-host-policy.json`](../constants/external-host-policy.json), [`scripts/check-external-links.mjs`](../scripts/check-external-links.mjs), [`app/(tabs)/you/privacy.tsx`](<../app/(tabs)/you/privacy.tsx>) | Runtime HTTPS hosts are inventoried by purpose and interaction mode; automatic data providers are distinguished from user-initiated handoffs. Known private/auth/form/payment/prayer paths are excluded from the service-worker cache. | An allowlist records reviewed code behavior; it does not grant content, scraping, redistribution, payment, or data-processing rights. Any new host or interaction mode requires review. |
+| Routes and unavailable features | [`constants/Routes.ts`](../constants/Routes.ts), [`public/check-route-contract.mjs`](../public/check-route-contract.mjs), [`scripts/check-production-integrity.mjs`](../scripts/check-production-integrity.mjs) | New navigation uses canonical routes, legacy Community bookmarks redirect safely, Back parameters accept only exact internal routes, and unfinished bulletin/events/prayer/library/alternate-giving surfaces are not presented as working features. | Retired routes are not substitutes for the church decisions and approved data needed to implement those features later. |
+
+## Capability and disposition matrix
+
+Support varies with browser, OS, installation state, permissions, and policy. Runtime
+feature detection is authoritative; this table states the product decision, not a promise
+that every listed operating-system integration has passed acceptance.
+
+| Capability | General platform reality | NYCCSDA disposition |
 | --- | --- | --- |
-| Installation | [`public/manifest.json`](../public/manifest.json), [`app/+html.tsx`](../app/+html.tsx) | A standalone manifest, icons, Apple meta tags, start URL, and GitHub Pages scope exist. There is no in-app install affordance or installed-state detection. The hard-coded subpath must remain aligned with the production host. |
-| Service worker and updates | [`public/sw.js`](../public/sw.js), [`app/_layout.tsx`](../app/_layout.tsx) | The app registers a worker and performs update checks. The worker has an empty install handler, so it does not pre-cache a known-good app shell. It network-fetches and opportunistically caches every GET, then falls back only to an exact cached request. Online startup/manual refresh deletes every Cache API cache for the origin. Offline cold start is therefore not guaranteed. The checked-in worker version is also behind the package version; version synchronization is tracked separately. |
-| Local storage | [`app/_layout.tsx`](../app/_layout.tsx), [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>), [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>) | Language, theme, setup state, Verse of the Day selection, and Bible position use AsyncStorage. On web this dependency uses `localStorage`, suitable for small settings but not Bible packages, audio, or notes. There is no quota estimate, persistence request, schema migration, or user-facing storage management. |
-| Audio | [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>), [`package.json`](../package.json) | Bible audio streams through `expo-av`/an HTML audio element. Play/pause and next-chapter behavior exist, but there is no Media Session metadata, lock-screen action handling, offline audio, or explicit background-playback contract. `expo-av` is deprecated and unmaintained. |
-| Share | [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>), [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>) | Verse of the Day and selected verses use `navigator.share()` when present. There is no explicit clipboard/copy fallback or share-target registration. |
-| Permissions | [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>), [`services/SunsetLocationPolicy.ts`](../services/SunsetLocationPolicy.ts) | Home uses Elmhurst without a geolocation prompt. A user-selected action opens an English-only third-party disclosure before the sole permission request. Granted coordinates stay in component memory only; denial, failure, or reset retains Elmhurst. Physical-browser acceptance remains pending. |
-| Not implemented | Repository-wide search | There is no Push API, Notifications API, file picker/handle, speech recognition, Media Session, storage persistence, Background Sync, or permission-management UI. |
+| Install and standalone launch | Chromium and modern Safari offer install/add-to-home experiences; Firefox support and UX vary by platform. `beforeinstallprompt` is non-standard and absent in many valid install paths. | **Core implemented; content/physical gate remains.** Keep install optional, use standalone/capability signals, and retain manual browser use. Finish #42 illustrations and reviewed localized guidance before claiming complete support. |
+| App-shell offline | Service workers and Cache API are broadly available, but storage, eviction, update timing, and installed-mode behavior vary. | **Local foundation implemented; physical acceptance pending.** Cache only the generated build manifest and retain honest online-required states for uncached content. |
+| IndexedDB and persistence | Browser-managed quota and eviction differ, especially under storage pressure and private browsing. | **Foundation only.** Use versioned IndexedDB for any future explicit Bible/personal-data lifecycle; do not turn incidental runtime requests into unbounded storage. |
+| Media Session and background audio | Media Session can expose metadata/actions, but OS audio focus and background lifetime still vary. | **Not implemented.** Consider a narrow #55/#79 follow-up only after rights, metadata, seek/error state, and physical-device scenarios are specified. |
+| Push notifications | Requires a worker, explicit permission, subscription infrastructure, and an operational content owner; installed-state requirements differ by platform. | **Deferred.** Reconsider only after #49 has an approved public, expiring event source and leadership accepts subscription retention, deletion, delivery, and support duties. |
+| Outbound Web Share | Availability and share targets vary; transient user activation is normally required. | **Implemented with fallbacks.** Preserve Web Share, clipboard, and manual selection. Do not add inbound share-target registration without a separate validated workflow. |
+| Direct File System Access | Rich handles are not consistently available across major browser families. | **Do not use for the core app.** Portable file input/download remains the backup path. |
+| Portable JSON import/export | Ordinary file selection and download are widely supported, with platform-specific save/share UI. | **Implemented for four settings on web.** Handle hostile files, quota/storage failure, preview, rollback, and explicit deletion; do not call it a full backup. |
+| Speech recognition | Support and locale accuracy vary, and browsers may send audio to remote recognition services. | **Privacy-gated under #73.** Typed search must remain equivalent; require provider disclosure, no retention, denial/cancel handling, and fluent review before implementation. |
+| Geolocation | Widely available only in secure contexts and with permission; permission persistence/revocation differs by browser. | **Consent-first flow implemented; physical acceptance pending.** Elmhurst remains the no-prompt default and complete fallback. |
+| Background Sync, periodic sync, permission dashboard | Availability and policy are inconsistent and maintenance cost exceeds a demonstrated current need. | **Not selected.** Do not make any of these a core dependency. |
 
-## Browser and OS capability matrix
+## Privacy and maintenance decisions
 
-This matrix targets current stable browsers as of the review date. “Conditional” means
-that installation state, OS integration, browser policy, a user gesture, or an empirical
-device test is required. Browser APIs and OS behavior can change independently, so runtime
-feature detection remains mandatory.
+| Capability | Boundary and fallback | Decision |
+| --- | --- | --- |
+| Installation | Do not fingerprint or retain browser identity. Continue in the browser and keep Help discoverable. | Keep the local implementation; complete #42 human-reviewed content and device acceptance. |
+| App shell | Cache only public build-owned assets. Never cache prayer, payment, roster, account, OAuth, authenticated, mutation, or error traffic. | Keep the deterministic shell; gate release claims on online/update/offline physical tests. |
+| Local backup | The export is plain JSON controlled by the user. It may be copied by the OS, but the app does not upload it. | Keep settings-only v1. Personal notes/highlights/handwriting require a new privacy-reviewed schema. |
+| Bible/audio downloads | Translation and audio redistribution rights, storage size, integrity, migrations, and deletion are independent of shell caching. | Defer until #52 has an approved source and explicit download lifecycle. |
+| Audio integration | Public audio still needs metadata/artwork rights and interruption behavior. Reading remains the complete fallback. | Keep `expo-audio`; do not claim background/lock-screen support before #55/#79 acceptance. |
+| Notifications | Push subscriptions are stable browser identifiers and need server operations, retention, unsubscribe/delete, abuse prevention, and approved content. | Defer pending #49 and leadership/privacy/operations approval. |
+| Sharing | The user explicitly initiates transmission; destination behavior is outside the app. | Keep the hardened outbound flow. Do not add inbound sharing now. |
+| Speech recognition | Spoken queries may contain sensitive religious or personal information and may leave the device. | Keep disabled under #73. |
+| Geolocation | With explicit consent, coordinates go to the sunset provider and remain in component memory only. | Keep the consent-first flow; finish localized copy and physical permission tests. |
 
-| Capability | Chromium desktop (Chrome/Edge) | Chromium on Android | Safari on macOS | iOS/iPadOS Home Screen web app | Firefox on Windows / Android | Firefox on macOS / Linux | NYCCSDA disposition |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Install and standalone launch | **Yes.** Manifest-based install is supported across Chromium desktop OSes. `beforeinstallprompt` is available but non-standard. | **Yes.** Browser menu and install promotion are supported. | **Yes.** “Add to Dock” requires macOS Sonoma 14 / Safari 17 or newer. | **Yes.** Manual “Add to Home Screen”; since iOS/iPadOS 16.4 it can be initiated from multiple browsers. | **Yes, with different UX.** Firefox 143+ supports web-app windows on Windows; Firefox Android exposes Install. | **No built-in app install.** The site still works as a normal browser app. | Implement [#42](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/42) with capability/standalone detection and illustrated manual instructions. Never make installation mandatory. |
-| Service worker and app-shell offline | **Yes.** | **Yes.** | **Yes.** | **Yes.** | **Yes.** | **Yes.** | High priority, but current caching is insufficient. Pre-cache a build-owned shell, provide navigation fallback, and test airplane-mode cold start. Keep online website fallback when registration fails. |
-| Cache API / IndexedDB / Storage API | **Yes.** Quota and persistence are browser-managed. | **Yes.** Device pressure matters. | **Yes.** Modern WebKit supports quota estimates and persistent-storage requests. | **Yes.** Installed storage is isolated from Safari and can receive favorable persistence heuristics. | **Yes.** Persistent storage may show a permission prompt. | **Yes.** | Use IndexedDB for versioned large local data under [#52](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/52); keep `localStorage` for small settings. Always handle quota, eviction, corruption, and deletion. |
-| Media Session metadata and actions | **Yes; feature-detect individual actions.** | **Yes; strongest lock-screen/media-notification integration.** | **Yes; OS controls vary.** | **Yes; OS controls and interruptions require physical-device tests.** | **Yes; OS actions vary.** | **Yes; OS actions vary.** | Add metadata plus play, pause, previous/next, and seek handlers only after replacing `expo-av`. Media Session improves controls; it does not guarantee uninterrupted background execution. |
-| Background / locked-screen audio | **Conditional.** HTML media can continue, but power policy and OS audio focus apply. | **Conditional.** Use a real media element plus Media Session and test notification/lock controls. | **Conditional.** Test screen lock, sleep, interruptions, and output changes. | **Conditional.** Test installed and in-browser modes, lock, Control Center, calls, and Bluetooth changes. | **Conditional.** Test installed/windowed and browser modes. | **Conditional.** Test browser mode and OS media keys. | Create a focused follow-up under [#55](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/55). Streaming must retain visible in-app controls and a restart/retry fallback. Offline audio remains out of the first download release. |
-| Push notifications | **Yes**, with HTTPS, a service worker, explicit permission, and a push service. | **Yes;** notification display comes from the worker. | **Yes** in modern Safari/macOS. | **Conditional.** Requires an installed Home Screen web app on iOS/iPadOS 16.4+ and a direct user gesture before permission. | **Yes**, subject to Firefox push quotas/policy. | **Yes**, subject to Firefox push quotas/policy. | Defer. Re-evaluate only after [#49](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/49) supplies approved public events and an owner accepts subscription privacy and delivery operations. |
-| Outbound Web Share | **Yes in current Chromium, but OS targets vary.** | **Yes.** | **Yes.** | **Yes.** | **Windows desktop: not enabled by default; Android: yes.** | **No by default.** | Keep the existing feature-detected share action. Add “Copy text/link” fallback. Do not register the app as a share target without a separate user story. |
-| Direct File System Access handles | **Yes** in current Chromium, with a user gesture and per-file/folder grant. | **Yes in current Chrome-family releases**, with device-specific picker behavior. | **No.** | **No.** | **No.** | **No.** | Do not use as the primary backup interface. It may be an optional enhancement only after the portable path works. Do not retain handles without a clear need. |
-| Portable file import/export (`<input type=file>`, Blob/download/share) | **Yes.** | **Yes.** | **Yes.** | **Yes, with platform share/save UI.** | **Yes.** | **Yes.** | Use this path for [#41](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/41): versioned JSON, validation, preview, checksum, transactional import, and explicit deletion. |
-| Speech recognition | **Conditional.** Supported, but recognition may send audio to a remote browser service and may not work offline. | **Conditional.** Same remote-processing and permission concerns. | **Conditional.** Safari support depends on Siri availability. | **Conditional.** Safari support depends on Siri and microphone permission. | **No by default.** Firefox implementation remains preference-gated; Android mirrors that limitation. | **No by default.** | Defer to [#73](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/73). Require privacy approval, just-in-time disclosure, no app retention, and a fully equivalent typed search path. |
-| Geolocation and permission status | **Geolocation: yes. Permissions query: conditional by descriptor.** | **Same.** | **Same.** | **Same; installed and browser grants may be separate.** | **Same.** | **Same.** | Replace the load-time request with a user-selected “Use my location” action. Explain that coordinates are sent to the sunset provider; retain Elmhurst with no prompt as the default. |
+## Remaining acceptance matrix
 
-### Interpretation notes
+Automated checks cover pure policies, contracts, source integrity, TypeScript, Expo
+configuration, tests, and a production web export. They do not replace these manual and
+physical gates.
 
-- Installation support does not imply offline readiness. A manifest can produce an app
-  icon while the first offline launch still fails.
-- Media Session exposes metadata and action hooks to the browser/OS. Background playback
-  lifetime remains an OS policy, so lock-screen behavior is an acceptance test rather than
-  a support claim.
-- On iOS and iPadOS, installed web apps have important capability and storage differences
-  from ordinary browser tabs. Test both states. Browser-engine rules can also differ in
-  eligible regions, which is another reason to feature-detect.
-- `navigator.share()` and direct file handles require transient user activation. System
-  share targets and file providers vary even when the API exists.
-- Web storage is best-effort by default and private-browsing data is normally cleared when
-  that session ends. No local-only feature may promise that browser storage is a backup.
-
-## Privacy, maintenance, fallback, and disposition
-
-| Capability | Privacy / liability | Maintenance cost | Required fallback | Disposition |
-| --- | --- | --- | --- | --- |
-| Install guidance | Low. Do not fingerprint or retain browser identity. | Low to medium: browser install menus change. Review illustrations quarterly. | Continue in the browser; permanent Help entry for manual install steps. | **Approve through #42.** Prefer feature and display-mode detection; use generic browser families only for instructions when unavoidable. |
-| App-shell offline | Low if caches contain only public app assets and sanitized public GET data. Broad runtime caching becomes a liability once forms or private endpoints exist. | Medium: cache manifests, update lifecycle, rollback, and device testing. | Honest online-required state for uncached content; last known-good shell must still open. | **Approve as a release-foundation follow-up.** Separate app-shell reliability from #52's explicit Bible downloads. |
-| Large local content and notes | Local storage supports the no-account model, but device loss, shared devices, eviction, and unencrypted-at-rest data must be disclosed. | Medium to high: schema migrations, quota, integrity, import/export, and deletion. | Network fetch for content; portable encrypted-by-user/device-controlled export where applicable. | **Approve only through #41/#52 contracts.** Never put prayer, roster, payment, OAuth, or authenticated data in the service-worker cache. |
-| Media Session / background audio | Low for public Bible audio. Metadata and artwork still need licensing review. | Medium: replace deprecated audio library, handle interruptions, and maintain device tests. | In-app player, restart/retry, and ordinary foreground streaming. | **Approve a narrow #55 follow-up after the audio migration.** Do not make offline audio part of v1. |
-| Notifications | Push subscriptions contain a unique endpoint and keys that can single out a browser installation. They need retention, deletion, unsubscribe, breach handling, and a server operator even without names or accounts. | High: push service, expiring subscriptions, content approval, delivery failures, abuse prevention, and support. | Events page, calendar link, bulletin, and external signup link. | **Defer.** Open an implementation issue only after #49 and leadership/privacy approval. Use opt-in public-event topics, not behavioral targeting. |
-| Outbound share | Low; the user explicitly chooses a target. Shared Scripture text still requires translation-rights review. | Low. | Copy text and link; selectable text if clipboard access is unavailable. | **Keep and harden.** No inbound share target for now. |
-| Direct file handles | Grants access to user-selected files/folders and creates confusing permission recovery across browsers. | High relative to value because only Chromium provides the full interface. | Standard file input plus download/share. | **Do not select for the core app.** Portable #41 import/export comes first. |
-| Speech recognition | High. Chrome may send audio to a remote recognition service; Safari depends on Siri. Spoken searches can contain sensitive religious or personal information. | High: multilingual accuracy, permission UX, remote-service changes, accessibility, and denial paths. | Typed search with no loss of capability. | **Privacy-gated under #73.** Default off; do not retain audio/transcripts beyond inserting user-confirmed text. |
-| Geolocation | When explicitly enabled, current coordinates leave the device in requests to a third-party sunset API. | Low with the consent-first flow. | Elmhurst coordinates, retry/settings guidance, and an immediate reset action. | **Implemented locally; physical-browser acceptance pending.** The app names the provider before the prompt, retains coordinates in memory only, uses `cache: 'no-store'` for device-coordinate requests, and updates the English privacy disclosure. Chinese and Spanish copy remains human-review gated. |
-| Permissions generally | Permission denials and revocations differ by browser and can be long-lived. Repeated prompts damage trust. | Medium if many capabilities are added. | Every permission feature needs a no-permission path and settings/help text. | **Adopt one shared permission UX contract.** Ask just in time, once, after intent; show how to revoke; never block core reading/navigation. |
-
-## Recommended follow-up issues
-
-These are recommendations for tracker work, not issues created by this audit.
-
-1. **P0 — Make PWA offline startup and updates deterministic.**
-   - Pre-cache a build-generated, same-origin app shell during service-worker install.
-   - Use explicit cache namespaces and strategies for navigation, immutable assets, and
-     sanitized public API data; never cache authenticated, form, prayer, payment, OAuth, or
-     non-GET traffic.
-   - Remove origin-wide cache deletion. Activate updates without mixing incompatible shell
-     and bundle versions, and retain the last known-good build on refresh failure.
-   - Accept only after fresh install, update, rollback, offline cold start, and corrupted
-     cache recovery pass on Android Chromium, iOS Home Screen Safari, desktop Chromium,
-     Safari, and Firefox.
-
-2. **P1 — Finish #42 with capability-driven install help.**
-   - Provide original, localized instructions for iOS/iPadOS Add to Home Screen, Android
-     browser menus, Chromium desktop install, Safari Add to Dock, Firefox Windows/Android,
-     and a no-install desktop Firefox fallback.
-   - Use `beforeinstallprompt` only where it fires; otherwise open instructions. Detect
-     standalone display mode so installed users do not see install promotion.
-
-3. **P1 — Add Media Session and locked-screen audio acceptance under #55.**
-   - First migrate away from deprecated `expo-av`.
-   - Publish chapter/translation metadata and artwork only when rights are verified. Wire
-     play, pause, previous/next chapter, and seek actions that share state with the in-app
-     player.
-   - Test lock, app switch, phone call/audio-focus interruption, Bluetooth route changes,
-     completion, and next-chapter behavior. Document unsupported combinations rather than
-     faking controls.
-
-4. **P1 — Make Sabbath location consent-first — implemented locally.**
-   - Home now defaults to Elmhurst without prompting. An explicit “Use my location” action
-     opens the sunset-calculation and third-party coordinate disclosure first.
-   - Device coordinates stay in component memory and use no-store requests. Denial keeps
-     Elmhurst and provides retry/browser-settings guidance. The English privacy policy is
-     updated; translated copy and physical-browser acceptance remain gated.
-
-5. **P2 — Implement #41 with portable files, then optional enhancements.**
-   - Use ordinary file selection and download/share for every supported browser.
-   - Do not use OAuth or direct file handles in v1. Direct File System Access may be a
-     feature-detected convenience later, never the only import/export path.
-
-6. **P2 — Complete outbound share fallback.**
-   - Preserve user-initiated Web Share. Add copy text/link and selectable-text fallbacks;
-     feature-detect `navigator.share`, `navigator.canShare`, and clipboard operations.
-   - Do not add Web Share Target until a concrete devotional workflow justifies incoming
-     data and its validation/storage rules.
-
-7. **Conditional — Public-event notifications.**
-   - Create only after #49 has a validated, public, expiring event feed and leadership names
-     content and operational owners.
-   - Require explicit topic opt-in, easy unsubscribe/delete, minimal endpoint retention, no
-     accounts or behavioral segmentation, quiet-hour/content rules, and iOS installed-app
-     guidance. The events page remains authoritative when delivery fails.
-
-8. **Deferred — Speech recognition through #73.**
-   - Run a written privacy review first. If approved, disclose remote recognition before
-     microphone access, support English/Traditional Chinese/Simplified Chinese/Spanish only
-     when verified, and keep the typed input primary.
-
-## Acceptance test matrix for selected work
-
-### Automated on every PWA-affecting change
-
-- Build the static web export from a clean install and verify that manifest `start_url`,
-  scope, icon paths, service-worker URL, and generated asset URLs match the deployment base.
-- Run browser tests in Chromium, Firefox, and WebKit for initial online load, route
-  navigation, service-worker control, update activation, denied permissions, offline
-  navigation fallback, and recovery when connectivity returns.
-- Assert cache boundaries: only allowlisted same-origin public responses are present; form,
-  prayer, payment, OAuth, authenticated, mutation, and error responses are absent.
-- Test local-data schema migration, quota errors, corrupted entries, deletion, private-mode
-  limitations, and export/import round trips with synthetic data.
-- Feature-probe optional APIs and test their fallback path even in browsers that support the
-  capability.
-
-### Physical-device/manual gates
-
-| Platform | Required scenarios |
+| Platform | Required scenarios before broad production claims |
 | --- | --- |
-| Android current stable Chrome | Install/uninstall, first launch, airplane-mode cold start, update while open, storage pressure/quota error, share/copy, denied location, screen-lock audio, notification eligibility if later implemented. |
-| Android current Firefox and Edge | Install instructions, standalone launch, offline shell, share fallback, permission denial, audio interruption. |
-| iPhone and iPad on the minimum supported iOS/iPadOS plus current stable | Add to Home Screen from Safari and one alternate browser, installed-versus-tab storage, airplane-mode cold start, update/resume, share/copy, denied location, lock/Control Center audio, and installed-only notification eligibility. |
-| macOS Sonoma 14+ Safari | Add to Dock, separate web-app storage/privacy settings, offline shell, update, share, permissions, sleep/lock audio. |
-| Windows 11 current Chrome, Edge, and Firefox | Install UX (including Firefox 143+ behavior), Start/taskbar launch, offline shell, updates, system share/fallback, media keys, permissions. |
-| Firefox macOS/Linux smoke | Confirm normal website fallback, offline shell, copy fallback, and no install-only dependency. |
+| Android current stable Chrome | Install/uninstall, standalone launch, airplane-mode cold start, update while open, storage pressure, share/copy, location allow/deny/reset, 100-150% text, screen-lock/interruption audio. |
+| Android Firefox and Edge | Install guidance, ordinary-browser fallback, offline shell, share fallback, location denial, enlarged text, audio interruption. |
+| iPhone and iPad at the minimum supported release and current stable | Add to Home Screen, installed-versus-tab behavior, airplane-mode cold start, update/resume, share/copy, location allow/deny/reset, enlarged CJK text, lock/Control Center audio. |
+| macOS Safari | Add to Dock where supported, web-app storage/privacy settings, offline/update, share, permissions, enlarged text, sleep/lock audio. |
+| Windows 11 Chrome, Edge, and Firefox | Install UX where offered, ordinary-browser fallback, offline/update, system-share fallback, permissions, text scale, media keys. |
+| Firefox on macOS/Linux | Confirm ordinary website fallback, offline shell, manual-copy path, text scale, and no install-only dependency. |
 
-No Windows-only run may claim iOS coverage. Capability support in documentation is not a
-substitute for the installed-PWA physical-device gates.
+Additional human gates:
+
+- Fluent reviewers must approve new Traditional Chinese, Simplified Chinese, and Spanish
+  install/privacy copy. Machine translation is not acceptance.
+- Current original or properly licensed installation illustrations need attribution,
+  accessible alternatives, and narrow/enlarged-text review.
+- Traditional and Simplified Chinese glyph clipping and Scripture punctuation need visual
+  review on web, Android, and iOS in both themes and at every supported text scale.
+- Audio metadata/artwork and any downloadable Bible or hymnal material need explicit
+  rights approval.
+
+No Windows-only run may claim iOS, Android, Safari, installed-PWA, lock-screen, or
+assistive-technology coverage.
 
 ## Maintenance policy
 
-- Review this matrix quarterly and whenever the minimum Expo SDK, iOS/iPadOS, Android, or
-  browser support policy changes. Record the review date even when no decision changes.
-- Prefer standards and runtime feature detection. Browser-specific instructions are
-  content, not branching business logic, and must always have a generic fallback.
-- Assign an operational owner before adopting any capability that needs a server or ongoing
-  content action, especially push.
-- Treat service-worker changes as release-critical. A deploy is incomplete until online,
-  update, and offline synthetic probes pass against the production base path.
-- Keep capability telemetry out of the app. Support troubleshooting should use local
-  diagnostics users can choose to share, not persistent user-level analytics.
+- Run `npm run check` from a clean locked install for every PWA-affecting change. The web
+  export must inject the cache manifest and validate base paths before deployment.
+- Treat service-worker changes as release-critical. Production signoff requires online,
+  update, and offline probes against the selected canonical production URL.
+- Review this matrix whenever the supported Expo SDK, browser/OS baseline, storage model,
+  or third-party data flow changes.
+- Prefer standards and feature detection. Browser-specific instructions are content, not
+  a replacement for working fallback behavior.
+- Assign an operational owner before adopting any capability that needs a server or
+  continuing content action, especially push and public event feeds.
+- Keep capability telemetry out of the app. Diagnostics should be local and shared only
+  at the user's direction.
 
-## Primary sources
+## Primary references
 
 - [Issue #72](https://github.com/New-York-Chinese-Seventh-day-Adventist/sda-church-app/issues/72)
 - [MDN: Making PWAs installable](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)
 - [MDN: `beforeinstallprompt`](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeinstallprompt_event)
-- [Apple: Turn a website into an app in Safari on Mac](https://support.apple.com/guide/safari/add-to-dock-ibrw9e991864/mac)
-- [Mozilla: Web apps in Firefox for Windows](https://support.mozilla.org/en-US/kb/web-apps-firefox-windows)
-- [Mozilla: Web apps in Firefox for Android](https://support.mozilla.org/en-US/kb/use-web-apps-firefox-android)
 - [MDN: Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
 - [Chrome: Service worker lifecycle](https://web.dev/articles/service-worker-lifecycle)
 - [MDN: Storage quotas and eviction](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)
 - [WebKit: Storage policy](https://webkit.org/blog/14403/updates-to-storage-policy/)
 - [MDN: Media Session](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/mediaSession)
-- [Chrome: Media Session and media notifications](https://developer.chrome.com/blog/media-session)
-- [Expo: deprecated `expo-av`](https://docs.expo.dev/versions/v54.0.0/sdk/av/)
 - [Expo: `expo-audio`](https://docs.expo.dev/versions/latest/sdk/audio/)
 - [MDN: Notifications API](https://developer.mozilla.org/en-US/docs/Web/API/Notifications_API)
 - [MDN: Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)
 - [WebKit: Web Push for iOS and iPadOS Home Screen apps](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)
-- [Microsoft Edge: Push messages](https://learn.microsoft.com/en-us/microsoft-edge/progressive-web-apps/how-to/push)
 - [MDN: Web Share API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Share_API)
-- [Microsoft Edge: Share content with other apps](https://learn.microsoft.com/en-us/microsoft-edge/progressive-web-apps/how-to/share)
 - [MDN: `showOpenFilePicker`](https://developer.mozilla.org/en-US/docs/Web/API/Window/showOpenFilePicker)
-- [Chrome: File System Access API](https://developer.chrome.com/docs/capabilities/web-apis/file-system-access)
 - [MDN: Speech recognition](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition)
-- [WebKit: Safari speech recognition](https://webkit.org/blog/11648/new-webkit-features-in-safari-14-1/)
 - [MDN: Permissions API](https://developer.mozilla.org/en-US/docs/Web/API/Permissions_API)
+
+For issue-by-issue release disposition, see
+[`RELEASE_READINESS_0.23.0.md`](./RELEASE_READINESS_0.23.0.md).

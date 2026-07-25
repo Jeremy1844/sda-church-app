@@ -3,6 +3,9 @@
 For the current cross-browser capability decisions and follow-up recommendations, see the
 [PWA Capability Audit](./PWA_CAPABILITY_AUDIT.md).
 
+For the issue-by-issue local implementation evidence, unresolved gates, and final release
+validation record, see [Release Readiness 0.23.0](./RELEASE_READINESS_0.23.0.md).
+
 Architecture decisions for fonts, localization, Bible/offline boundaries, public
 operations, external content, local backup, consent-first location, and future personal
 devotional data are recorded in [`docs/adr`](./adr/).

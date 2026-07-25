@@ -22,19 +22,20 @@ export function resolvePwaInstallGuidance(userAgent = '') {
   const isChromium = /Chrome|CriOS/i.test(normalized) && !isEdge;
   const isSafari = /Safari/i.test(normalized) && !/Chrome|CriOS|Chromium|Edg|Firefox|FxiOS/i.test(normalized);
   const isMac = /Macintosh|Mac OS X/i.test(normalized);
+  const isWindows = /Windows NT/i.test(normalized);
 
   if (isiOS) {
     return guidance('iPhone or iPad', [
       'Open this page in Safari if your current browser does not show a home-screen action.',
       'Tap Safari’s Share button, then choose Add to Home Screen. It may appear under More or Edit Actions.',
-      'Review the app name and website address, then tap Add.',
+      'Turn on Open as Web App, review the app name and website address, then tap Add.',
     ]);
   }
 
   if (isAndroid && (isChromium || isEdge)) {
     return guidance(isEdge ? 'Microsoft Edge on Android' : 'Chrome on Android', [
       'Open the browser’s three-dot menu.',
-      'Choose Install app or Add to Home screen if it is offered.',
+      'Choose Add to home screen, then Install, if those actions are offered.',
       'Review the app name and website address, then confirm.',
     ]);
   }
@@ -49,7 +50,7 @@ export function resolvePwaInstallGuidance(userAgent = '') {
 
   if (isMac && isSafari) {
     return guidance('Safari on Mac', [
-      'Open Safari’s File menu.',
+      'Use Safari’s Share button in the toolbar.',
       'Choose Add to Dock if that action is available in your macOS version.',
       'Review the app name and website address, then confirm.',
     ]);
@@ -63,10 +64,18 @@ export function resolvePwaInstallGuidance(userAgent = '') {
     ]);
   }
 
+  if (isFirefox && isWindows) {
+    return guidance('Firefox on Windows', [
+      'Use the web apps button in the address bar if Firefox offers it for this page.',
+      'Firefox adds the web app to the Windows taskbar and Start menu.',
+      'Only proceed if the browser shows the expected website address.',
+    ]);
+  }
+
   if (isFirefox) {
-    return guidance('Firefox on desktop', [
-      'Firefox desktop may not offer standalone web-app installation.',
-      'You can bookmark this page, or open the same address in a browser that offers an install action.',
+    return guidance('Firefox on this desktop', [
+      'Firefox currently offers its desktop web-app feature only on Windows.',
+      'You can bookmark this page, or open the same address in a browser that offers an install action on this platform.',
       'Only proceed if the browser shows the expected website address.',
     ]);
   }

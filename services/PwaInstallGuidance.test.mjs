@@ -8,6 +8,7 @@ test('provides Safari home-screen steps for iPhone and iPad', () => {
   );
   assert.equal(result.platform, 'iPhone or iPad');
   assert.match(result.steps.join(' '), /Safari.*Share.*Add to Home Screen/);
+  assert.match(result.steps.join(' '), /Open as Web App/);
 });
 
 test('distinguishes Android Chrome and Firefox install menus', () => {
@@ -34,6 +35,20 @@ test('provides desktop Edge and Safari instructions without promising availabili
   assert.match(edge.steps.join(' '), /Wording varies/);
   assert.equal(safari.platform, 'Safari on Mac');
   assert.match(safari.steps.join(' '), /if that action is available/);
+  assert.match(safari.steps.join(' '), /Share button/);
+});
+
+test('uses Firefox web-app instructions only on supported Windows desktops', () => {
+  const windows = resolvePwaInstallGuidance(
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0',
+  );
+  const mac = resolvePwaInstallGuidance(
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14.6; rv:150.0) Gecko/20100101 Firefox/150.0',
+  );
+  assert.equal(windows.platform, 'Firefox on Windows');
+  assert.match(windows.steps.join(' '), /web apps button.*taskbar/);
+  assert.equal(mac.platform, 'Firefox on this desktop');
+  assert.match(mac.steps.join(' '), /only on Windows/);
 });
 
 test('uses cautious generic steps for unknown user agents', () => {

@@ -7,6 +7,20 @@
 **Scope:** Research and follow-up recommendations only; this audit does not enable any new
 capability.
 
+## Remediation update: consent-first location
+
+Implemented locally on 2026-07-25. Home now starts with Elmhurst sunset times and does not
+call browser geolocation on load. “Use my location” first opens an English-only disclosure
+that names `api.sunrise-sunset.org`, explains the latitude/longitude transfer, and states
+that the app does not retain or log coordinates. Only a second “Continue” action can open
+the browser permission prompt. Denial, timeout, invalid coordinates, and unsupported
+geolocation retain Elmhurst times with retry and browser-settings guidance. Device
+coordinates remain in component memory only and can be cleared with “Use Elmhurst times.”
+
+Chinese and Spanish versions of the new privacy copy remain gated on fluent human review.
+Automated policy checks are complete; allow/deny/revoke/retry/reload behavior still requires
+the physical-browser matrix recorded below.
+
 ## Executive decision
 
 Keep the PWA as the primary distribution model. The web platform already covers the
@@ -39,7 +53,7 @@ user-agent strings to decide whether a feature is available.
 | Local storage | [`app/_layout.tsx`](../app/_layout.tsx), [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>), [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>) | Language, theme, setup state, Verse of the Day selection, and Bible position use AsyncStorage. On web this dependency uses `localStorage`, suitable for small settings but not Bible packages, audio, or notes. There is no quota estimate, persistence request, schema migration, or user-facing storage management. |
 | Audio | [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>), [`package.json`](../package.json) | Bible audio streams through `expo-av`/an HTML audio element. Play/pause and next-chapter behavior exist, but there is no Media Session metadata, lock-screen action handling, offline audio, or explicit background-playback contract. `expo-av` is deprecated and unmaintained. |
 | Share | [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>), [`app/(tabs)/bible/index.tsx`](<../app/(tabs)/bible/index.tsx>) | Verse of the Day and selected verses use `navigator.share()` when present. There is no explicit clipboard/copy fallback or share-target registration. |
-| Permissions | [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>) | Opening Home immediately requests geolocation. On success, coordinates are sent in query parameters to `api.sunrise-sunset.org`; on denial or failure the app uses Elmhurst. Coordinates are not stored by app code, but the request and third-party disclosure are not presented before the prompt. |
+| Permissions | [`app/(tabs)/index.tsx`](<../app/(tabs)/index.tsx>), [`services/SunsetLocationPolicy.ts`](../services/SunsetLocationPolicy.ts) | Home uses Elmhurst without a geolocation prompt. A user-selected action opens an English-only third-party disclosure before the sole permission request. Granted coordinates stay in component memory only; denial, failure, or reset retains Elmhurst. Physical-browser acceptance remains pending. |
 | Not implemented | Repository-wide search | There is no Push API, Notifications API, file picker/handle, speech recognition, Media Session, storage persistence, Background Sync, or permission-management UI. |
 
 ## Browser and OS capability matrix
@@ -90,7 +104,7 @@ feature detection remains mandatory.
 | Outbound share | Low; the user explicitly chooses a target. Shared Scripture text still requires translation-rights review. | Low. | Copy text and link; selectable text if clipboard access is unavailable. | **Keep and harden.** No inbound share target for now. |
 | Direct file handles | Grants access to user-selected files/folders and creates confusing permission recovery across browsers. | High relative to value because only Chromium provides the full interface. | Standard file input plus download/share. | **Do not select for the core app.** Portable #41 import/export comes first. |
 | Speech recognition | High. Chrome may send audio to a remote recognition service; Safari depends on Siri. Spoken searches can contain sensitive religious or personal information. | High: multilingual accuracy, permission UX, remote-service changes, accessibility, and denial paths. | Typed search with no loss of capability. | **Privacy-gated under #73.** Default off; do not retain audio/transcripts beyond inserting user-confirmed text. |
-| Geolocation | Current coordinates leave the device in requests to a third-party sunset API. A load-time prompt is surprising and inconsistent with the Sanctuary tenet. | Low once made consent-first. | Elmhurst coordinates and manual retry. | **Open a small privacy fix.** Prompt only from an explained user action; do not store precise coordinates or log them. Update the privacy disclosure before release. |
+| Geolocation | When explicitly enabled, current coordinates leave the device in requests to a third-party sunset API. | Low with the consent-first flow. | Elmhurst coordinates, retry/settings guidance, and an immediate reset action. | **Implemented locally; physical-browser acceptance pending.** The app names the provider before the prompt, retains coordinates in memory only, uses `cache: 'no-store'` for device-coordinate requests, and updates the English privacy disclosure. Chinese and Spanish copy remains human-review gated. |
 | Permissions generally | Permission denials and revocations differ by browser and can be long-lived. Repeated prompts damage trust. | Medium if many capabilities are added. | Every permission feature needs a no-permission path and settings/help text. | **Adopt one shared permission UX contract.** Ask just in time, once, after intent; show how to revoke; never block core reading/navigation. |
 
 ## Recommended follow-up issues
@@ -124,11 +138,12 @@ These are recommendations for tracker work, not issues created by this audit.
      completion, and next-chapter behavior. Document unsupported combinations rather than
      faking controls.
 
-4. **P1 — Make Sabbath location consent-first.**
-   - Default to Elmhurst without prompting. Add an explicit “Use my location” action with a
-     short explanation of the sunset calculation and third-party coordinate request.
-   - Do not persist precise coordinates. Provide retry and browser-settings guidance after
-     denial, and update the privacy policy's external-service list.
+4. **P1 — Make Sabbath location consent-first — implemented locally.**
+   - Home now defaults to Elmhurst without prompting. An explicit “Use my location” action
+     opens the sunset-calculation and third-party coordinate disclosure first.
+   - Device coordinates stay in component memory and use no-store requests. Denial keeps
+     Elmhurst and provides retry/browser-settings guidance. The English privacy policy is
+     updated; translated copy and physical-browser acceptance remain gated.
 
 5. **P2 — Implement #41 with portable files, then optional enhancements.**
    - Use ordinary file selection and download/share for every supported browser.

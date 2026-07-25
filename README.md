@@ -135,6 +135,19 @@ policies of those third-party providers. These services may collect data (such a
 addresses) as part of their standard operations. We do not have access to, nor do we
 store, any data collected by these external platforms.
 
+### 5. Sunset Times and Optional Location
+
+Home uses `api.sunrise-sunset.org` to retrieve sunset times. By default, requests use the
+public latitude and longitude of the Elmhurst church location and do not access your
+device location. If you select **Use my location**, the app first explains the data
+transfer. Only after you choose **Continue** does your browser ask for location permission.
+If permission is granted, your current latitude and longitude are sent directly to
+`api.sunrise-sunset.org` in the sunset request. This app does not store, persist, or log
+those coordinates; it keeps them in component memory only until you switch back to
+Elmhurst times or leave or reload the app. Device-coordinate requests also use the
+browser's `no-store` cache mode. The provider may still receive and process the coordinates
+and normal connection data, such as your IP address, under its own privacy practices.
+
 ---
 
 ## Legal Disclaimer

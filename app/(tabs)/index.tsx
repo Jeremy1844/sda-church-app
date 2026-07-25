@@ -15,6 +15,12 @@ import {
   fetchLatestActivity,
   LatestActivity,
 } from '@/services/LatestActivityService';
+import {
+  normalizeSunsetCoordinates,
+  selectSunsetLocation,
+  SunsetCoordinates,
+  SUNSET_LOCATION_PRIVACY_COPY,
+} from '@/services/SunsetLocationPolicy';
 import { NavigationStyles } from '@/styles/NavigationStyles';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,8 +35,15 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Button, Card, List, Text } from 'react-native-paper';
+import { Button, Card, Dialog, List, Portal, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const ELMHURST_SUNSET_COORDINATES: SunsetCoordinates = Object.freeze({
+  lat: CHURCH_LATITUDE,
+  lng: CHURCH_LONGITUDE,
+});
+
+type LocationRequestStatus = 'default' | 'requesting' | 'local' | 'unavailable';
 
 export default function HomeScreen() {
   const { language } = useContext(LanguageContext);
@@ -156,13 +169,17 @@ export default function HomeScreen() {
 
   const [isSabbath, setIsSabbath] = useState(false);
   const [countdown, setCountdown] = useState('');
-  const [useGps, setUseGps] = useState(false);
   const [targetDate, setTargetDate] = useState<Date | null>(null);
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [userCoords, setUserCoords] = useState<SunsetCoordinates | null>(null);
+  const [locationDisclosureVisible, setLocationDisclosureVisible] = useState(false);
+  const [locationStatus, setLocationStatus] =
+    useState<LocationRequestStatus>('default');
   const [sunsets, setSunsets] = useState<{ fri: Date | null; sat: Date | null }>({
     fri: null,
     sat: null,
   });
+
+  const useGps = userCoords !== null;
 
   const VOTD_CONFIG_KEY = 'votd_selection_config';
   const VOTD_CACHE_KEY = `votd_cache_${language}`;
@@ -179,36 +196,64 @@ export default function HomeScreen() {
     return () => controller.abort();
   }, []);
 
-  // Sabbath Countdown Logic
-  useEffect(() => {
-    // Detect Location via Web Geolocation API
-    if (Platform.OS === 'web' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // User allowed location
-          setUseGps(true);
-          setUserCoords({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          // Permission denied or error
-          setUseGps(false);
-          console.log('Location access denied, falling back to Elmhurst.');
-        },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: 3600000 },
-      );
-    } else {
-      // Fallback for offline or unsupported browsers
-      setUseGps(false);
+  // The browser permission prompt is reachable only from the disclosure dialog's
+  // Continue action. Home always starts with Elmhurst and never persists coordinates.
+  const requestCurrentLocation = () => {
+    setLocationDisclosureVisible(false);
+
+    if (
+      Platform.OS !== 'web' ||
+      typeof navigator === 'undefined' ||
+      !navigator.geolocation
+    ) {
+      setUserCoords(null);
+      setLocationStatus('unavailable');
+      return;
     }
-  }, []);
+
+    setLocationStatus('requesting');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coordinates = normalizeSunsetCoordinates(
+          position.coords.latitude,
+          position.coords.longitude,
+        );
+
+        if (!coordinates) {
+          setUserCoords(null);
+          setLocationStatus('unavailable');
+          return;
+        }
+
+        setUserCoords(coordinates);
+        setLocationStatus('local');
+      },
+      () => {
+        setUserCoords(null);
+        setLocationStatus('unavailable');
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 3600000 },
+    );
+  };
+
+  const useElmhurstLocation = () => {
+    setUserCoords(null);
+    setLocationStatus('default');
+  };
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchSunsets = async () => {
-      const lat = useGps && userCoords ? userCoords.lat : CHURCH_LATITUDE;
-      const lng = useGps && userCoords ? userCoords.lng : CHURCH_LONGITUDE;
+      const location = selectSunsetLocation(
+        ELMHURST_SUNSET_COORDINATES,
+        userCoords,
+      );
+      const { lat, lng } = location.coordinates;
+      const requestOptions =
+        location.source === 'device'
+          ? ({ cache: 'no-store', signal: controller.signal } as const)
+          : { signal: controller.signal };
 
       const getDayDate = (d: number) => {
         const t = new Date();
@@ -221,8 +266,8 @@ export default function HomeScreen() {
 
       try {
         const [fRes, sRes] = await Promise.all([
-          fetch(getSunsetApiUrl(lat, lng, getDayDate(5))),
-          fetch(getSunsetApiUrl(lat, lng, getDayDate(6))),
+          fetch(getSunsetApiUrl(lat, lng, getDayDate(5)), requestOptions),
+          fetch(getSunsetApiUrl(lat, lng, getDayDate(6)), requestOptions),
         ]);
         const fData = await fRes.json();
         const sData = await sRes.json();
@@ -232,11 +277,14 @@ export default function HomeScreen() {
           sat: sData.results?.sunset ? new Date(sData.results.sunset) : null,
         });
       } catch (e) {
-        console.warn('Failed to fetch sunset times:', e);
+        if ((e as Error)?.name !== 'AbortError') {
+          console.warn('Failed to fetch sunset times:', e);
+        }
       }
     };
     fetchSunsets();
-  }, [useGps, userCoords, new Date().toDateString()]);
+    return () => controller.abort();
+  }, [userCoords, new Date().toDateString()]);
 
   const formatDisplayDate = (date: Date) => {
     const options: Intl.DateTimeFormatOptions = {
@@ -579,6 +627,52 @@ export default function HomeScreen() {
                   {countdown || '00:00:00'}
                 </Text>
               </View>
+              <View style={styles.locationControls}>
+                <Button
+                  mode="text"
+                  compact
+                  icon={useGps ? 'map-marker-off-outline' : 'crosshairs-gps'}
+                  loading={locationStatus === 'requesting'}
+                  disabled={locationStatus === 'requesting'}
+                  onPress={
+                    useGps
+                      ? useElmhurstLocation
+                      : () => setLocationDisclosureVisible(true)
+                  }
+                >
+                  {useGps
+                    ? SUNSET_LOCATION_PRIVACY_COPY.resetAction
+                    : locationStatus === 'unavailable'
+                      ? SUNSET_LOCATION_PRIVACY_COPY.retryAction
+                      : SUNSET_LOCATION_PRIVACY_COPY.action}
+                </Button>
+                {locationStatus === 'requesting' && (
+                  <Text
+                    variant="labelSmall"
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                  >
+                    {SUNSET_LOCATION_PRIVACY_COPY.requesting}
+                  </Text>
+                )}
+                {locationStatus === 'unavailable' && (
+                  <Text
+                    variant="labelSmall"
+                    accessibilityLiveRegion="polite"
+                    style={{ color: theme.colors.error }}
+                  >
+                    {SUNSET_LOCATION_PRIVACY_COPY.unavailable}
+                  </Text>
+                )}
+                {locationStatus === 'local' && (
+                  <Text
+                    variant="labelSmall"
+                    accessibilityLiveRegion="polite"
+                    style={{ color: theme.colors.onSurfaceVariant }}
+                  >
+                    {SUNSET_LOCATION_PRIVACY_COPY.localSession}
+                  </Text>
+                )}
+              </View>
             </Card.Content>
           </Card>
 
@@ -655,6 +749,36 @@ export default function HomeScreen() {
           </View>
         </List.Section>
       </ScrollView>
+      <Portal>
+        <Dialog
+          visible={locationDisclosureVisible}
+          onDismiss={() => setLocationDisclosureVisible(false)}
+        >
+          <Dialog.Icon icon="map-marker-radius-outline" />
+          <Dialog.Title>{SUNSET_LOCATION_PRIVACY_COPY.title}</Dialog.Title>
+          <Dialog.Content>
+            {language !== 'en' && (
+              <Text
+                variant="labelMedium"
+                style={[styles.englishOnlyNotice, { color: theme.colors.primary }]}
+              >
+                {SUNSET_LOCATION_PRIVACY_COPY.englishOnlyNotice}
+              </Text>
+            )}
+            <Text variant="bodyMedium">
+              {SUNSET_LOCATION_PRIVACY_COPY.disclosure}
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setLocationDisclosureVisible(false)}>
+              {SUNSET_LOCATION_PRIVACY_COPY.keepDefaultAction}
+            </Button>
+            <Button onPress={requestCurrentLocation}>
+              {SUNSET_LOCATION_PRIVACY_COPY.continueAction}
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </>
   );
 }
@@ -683,6 +807,16 @@ const styles = StyleSheet.create({
   },
   labelColumn: {
     flex: 1,
+  },
+  locationControls: {
+    alignItems: 'flex-start',
+    gap: 4,
+    marginLeft: DESIGN_TOKENS.ICON_SIZE_FEATURED + 12,
+    marginTop: 8,
+  },
+  englishOnlyNotice: {
+    fontWeight: '700',
+    marginBottom: 8,
   },
   timerValueSubtle: {
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',

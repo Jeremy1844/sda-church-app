@@ -1,4 +1,4 @@
-# ADR 0006: Consent-first sunset location
+# ADR 0007: Consent-first sunset location
 
 - Status: Implemented locally; physical-browser acceptance remains required
 - Date: 2026-07-25

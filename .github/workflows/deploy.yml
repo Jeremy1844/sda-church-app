@@ -33,6 +33,9 @@ jobs:
       - name: Run the complete quality gate
         run: npm run check
 
+      - name: Verify deployment input is committed and reproducible
+        run: git diff --exit-code
+
       - name: Create the immutable release tag
         run: |
           VERSION=$(node -p "require('./package.json').version")
@@ -47,9 +50,6 @@ jobs:
             git tag "${TAG}"
             git push origin "${TAG}"
           fi
-
-      - name: Refresh sanitized YouTube activity
-        run: npm run refresh:latest-activity -- --allow-stale
 
       - name: Deploy GitHub Pages
         run: npm run deploy

@@ -62,14 +62,19 @@ That synchronization must be committed as a dedicated release-preparation change
 or alongside the final release PR. CI validates version consistency but never writes to a
 contributor branch.
 
+The sanitized latest-activity artifact is also reviewed source input. When it needs an
+update, run `npm run refresh:latest-activity`, inspect the channel, title, URL, timestamp,
+and generated diff, and commit it before the final release PR. Deployment never refreshes
+tracked content after tagging, so the tag and deployed build remain reproducible.
+
 ## Automated workflows
 
 - `.github/workflows/pr-check.yml` validates that a final PR to `main` contains a valid,
   strictly greater SemVer release version.
 - `.github/workflows/release-validation.yml` performs read-only release-branch checks. It
   does not create or push synchronization commits.
-- `.github/workflows/deploy.yml` validates, tags, and deploys a maintainer-approved merge
-  to `main`.
+- `.github/workflows/deploy.yml` validates an unchanged working tree, tags, and deploys a
+  maintainer-approved merge to `main`.
 
 There is no `release-tagging.yml`; tagging is part of `deploy.yml`.
 

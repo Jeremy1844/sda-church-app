@@ -82,23 +82,7 @@ export default function PrivacyPolicyScreen() {
         variant="titleMedium"
         style={[styles.sectionHeader, { color: theme.colors.onBackground }]}
       >
-        3. Traffic Management (Cloudflare)
-      </Text>
-      <Text
-        variant="bodyMedium"
-        style={[styles.bodyText, { color: theme.colors.onSurface }]}
-      >
-        We use Cloudflare to manage domain traffic and protect the application from common
-        web threats. Cloudflare may process basic connection data (such as IP addresses)
-        to identify malicious traffic and optimize performance. No user-level activity
-        within the app is tracked by this service.
-      </Text>
-
-      <Text
-        variant="titleMedium"
-        style={[styles.sectionHeader, { color: theme.colors.onBackground }]}
-      >
-        4. External Services
+        3. External Services
       </Text>
       <Text
         variant="bodyMedium"
@@ -126,7 +110,7 @@ export default function PrivacyPolicyScreen() {
         variant="titleMedium"
         style={[styles.sectionHeader, { color: theme.colors.onBackground }]}
       >
-        5. Sunset Times and Optional Location
+        4. Sunset Times and Optional Location
       </Text>
       <Text
         variant="bodyMedium"

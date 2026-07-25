@@ -120,14 +120,7 @@ services handle data to keep the application functional.
 This web application is deployed using GitHub Pages. GitHub may collect basic server logs
 and IP addresses for security, debugging, and operational maintenance.
 
-### 3. Traffic Management (Cloudflare)
-
-We use Cloudflare to manage domain traffic and protect the application from common web
-threats. Cloudflare may process basic connection data (such as IP addresses) to identify
-malicious traffic and optimize performance. No user-level activity within the app is
-tracked by this service.
-
-### 4. External Services
+### 3. External Services
 
 This application provides user-initiated links to external platforms, such as YouTube,
 Spotify, and HymnsForWorship.org. When you choose one of these links, you are subject to
@@ -146,7 +139,7 @@ connection data, such as your IP address and browser information. The app does n
 account or location data to those media requests. We do not have access to, nor do we
 store, provider-side request logs for these services.
 
-### 5. Sunset Times and Optional Location
+### 4. Sunset Times and Optional Location
 
 Home uses `api.sunrise-sunset.org` to retrieve sunset times. By default, requests use the
 public latitude and longitude of the Elmhurst church location and do not access your

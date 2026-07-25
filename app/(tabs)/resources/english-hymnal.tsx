@@ -96,8 +96,8 @@ export default function HymnalScreen() {
   // Scroll to a specific hymn if requested via search params (hymnNum)
   useEffect(() => {
     let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    if (hymnNum) {
-      const index = allHymns.findIndex((h) => h.number.toString() === hymnNum);
+    if (hymnNum && /^\d+$/.test(hymnNum)) {
+      const index = displayHymns.findIndex((h) => h.number.toString() === hymnNum);
       if (index !== -1) {
         scrollTimer = setTimeout(() => {
           flatListRef.current?.scrollToIndex({
@@ -112,7 +112,7 @@ export default function HymnalScreen() {
     return () => {
       if (scrollTimer !== null) clearTimeout(scrollTimer);
     };
-  }, [hymnNum, allHymns]);
+  }, [hymnNum, displayHymns]);
 
   const renderHymnItem = ({ item }: { item: HydratedHymn }) => {
     return (

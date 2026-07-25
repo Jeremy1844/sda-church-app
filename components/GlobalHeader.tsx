@@ -126,9 +126,17 @@ export const GlobalHeader = (props: any) => {
       });
     }
 
+    // Exact hymn results already carry a catalog-backed `hymnNum`. Keeping the
+    // global query as a second filter can shrink the destination list after its
+    // target index was resolved, so let the destination coordinate be the sole
+    // source of truth for those routes.
+    const navigationParams = item.isHymn
+      ? routeParams
+      : { ...routeParams, highlight: q };
+
     navFn({
       pathname: pathname as any,
-      params: { ...routeParams, highlight: q },
+      params: navigationParams,
     });
   };
 

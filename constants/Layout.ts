@@ -23,6 +23,7 @@ export const DESIGN_TOKENS = {
   ICON_SIZE_TAB: 28,
   // Bottom-tab labels need explicit metrics because the bundled Noto Sans files do not
   // contain CJK glyphs and platform fallback fonts have different vertical bounds.
+  BOTTOM_TAB_LABEL_FONT_SIZE: 10,
   BOTTOM_TAB_LABEL_LINE_HEIGHT: 16,
   BOTTOM_TAB_LABEL_BOTTOM_PADDING: 2,
   // 28px icon + 16px label + 2px label padding + 10px navigation-item padding.

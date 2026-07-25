@@ -1,6 +1,8 @@
 import { GlobalHeader, UIStateContext } from '@/components/GlobalHeader';
+import { scaleTypographyMetric } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
@@ -39,9 +41,10 @@ function TabBarIcon(props: {
 export default function TabLayout() {
   const theme = useAppTheme();
   const { language } = useContext(LanguageContext);
+  const { textScale } = useTextSize();
   const insets = useSafeAreaInsets();
   const { fontScale } = useWindowDimensions();
-  const tabBarContentHeight = getBottomTabContentHeight(fontScale);
+  const tabBarContentHeight = getBottomTabContentHeight(fontScale * textScale);
 
   // Reader Mode state shared with child screens
   const menuAnim = useRef(new Animated.Value(1)).current;
@@ -120,7 +123,14 @@ export default function TabLayout() {
               ios: 'System',
               web: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
             }),
-            lineHeight: DESIGN_TOKENS.BOTTOM_TAB_LABEL_LINE_HEIGHT,
+            fontSize: scaleTypographyMetric(
+              DESIGN_TOKENS.BOTTOM_TAB_LABEL_FONT_SIZE,
+              textScale,
+            ),
+            lineHeight: scaleTypographyMetric(
+              DESIGN_TOKENS.BOTTOM_TAB_LABEL_LINE_HEIGHT,
+              textScale,
+            ),
             paddingBottom: DESIGN_TOKENS.BOTTOM_TAB_LABEL_BOTTOM_PADDING,
           },
           headerTransparent: true,

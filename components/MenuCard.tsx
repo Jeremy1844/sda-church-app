@@ -1,4 +1,6 @@
 import { DESIGN_TOKENS } from "@/constants/Layout";
+import { scaleTypographyMetric } from '@/constants/AppPreferences';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from "@/constants/Themes";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
@@ -36,6 +38,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({
   style,
 }) => {
   const theme = useAppTheme();
+  const { textScale } = useTextSize();
   const resolvedRightIcon = onPress ? rightIcon : null;
   return (
     <AnimatedTouchableOpacity
@@ -59,14 +62,27 @@ export const MenuCard: React.FC<MenuCardProps> = ({
         color={iconColor || theme.colors.tertiary}
       />
       <View style={styles.cardContent}>
-        <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
+        <Text
+          style={[
+            styles.cardTitle,
+            {
+              color: theme.colors.onSurface,
+              fontSize: scaleTypographyMetric(18, textScale),
+              lineHeight: scaleTypographyMetric(24, textScale),
+            },
+          ]}
+        >
           {title}
         </Text>
         {description && (
           <Text
             style={[
               styles.cardSubtitle,
-              { color: theme.colors.onSurfaceVariant },
+              {
+                color: theme.colors.onSurfaceVariant,
+                fontSize: scaleTypographyMetric(14, textScale),
+                lineHeight: scaleTypographyMetric(20, textScale),
+              },
             ]}
           >
             {description}
@@ -96,6 +112,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cardContent: { flex: 1, marginLeft: 16 },
-  cardTitle: { fontSize: 18, fontWeight: "700" },
-  cardSubtitle: { fontSize: 14, marginTop: 2 },
+  cardTitle: { fontWeight: "700" },
+  cardSubtitle: { marginTop: 2 },
 });

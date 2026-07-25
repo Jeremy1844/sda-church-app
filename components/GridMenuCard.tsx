@@ -1,3 +1,5 @@
+import { scaleTypographyMetric } from '@/constants/AppPreferences';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useRef } from 'react';
@@ -33,6 +35,7 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
   style,
 }) => {
   const theme = useAppTheme();
+  const { textScale } = useTextSize();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const disabled = !onPress;
 
@@ -75,8 +78,32 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
       >
         {/* Title block — top left */}
         <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: theme.colors.onSurface }]}>{title}</Text>
-            {subtitle ? <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>{subtitle}</Text> : null}
+          <Text
+            style={[
+              styles.title,
+              {
+                color: theme.colors.onSurface,
+                fontSize: scaleTypographyMetric(15, textScale),
+                lineHeight: scaleTypographyMetric(20, textScale),
+              },
+            ]}
+          >
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text
+              style={[
+                styles.subtitle,
+                {
+                  color: theme.colors.onSurfaceVariant,
+                  fontSize: scaleTypographyMetric(12, textScale),
+                  lineHeight: scaleTypographyMetric(17, textScale),
+                },
+              ]}
+            >
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
 
         {/* Illustration + arrow row — bottom */}
@@ -118,15 +145,10 @@ const styles = StyleSheet.create({
     flex: 0,
   },
   title: {
-    fontSize: 15,
     fontWeight: '700',
-    // color will be set via theme (onSurface) in component
-    lineHeight: 20,
     maxWidth: '90%',
   },
   subtitle: {
-    fontSize: 12,
-    // color will be set via theme (onSurfaceVariant) in component
     marginTop: 3,
   },
   bottomRow: {

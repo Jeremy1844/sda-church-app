@@ -6,6 +6,11 @@ import {
   MD3LightTheme,
   useTheme,
 } from 'react-native-paper';
+import {
+  DEFAULT_TEXT_SCALE,
+  scaleTypographyRecord,
+  type TextScale,
+} from './AppPreferences';
 
 /**
  * Material Design 3 Theme definitions for both React Native Paper and React Navigation.
@@ -277,7 +282,19 @@ export const ThemeContext = createContext({
 /**
  * Centralized helper to retrieve the correct theme object based on state.
  */
-export const getAppTheme = (isDark: boolean): AppTheme =>
-  isDark ? customDarkTheme : customLightTheme;
+export const getAppTheme = (
+  isDark: boolean,
+  textScale: TextScale = DEFAULT_TEXT_SCALE,
+): AppTheme => {
+  const baseTheme = isDark ? customDarkTheme : customLightTheme;
+  if (textScale === DEFAULT_TEXT_SCALE) {
+    return baseTheme;
+  }
+
+  return {
+    ...baseTheme,
+    fonts: scaleTypographyRecord(baseTheme.fonts, textScale),
+  } as AppTheme;
+};
 
 export const useAppTheme = () => useTheme<AppTheme>();

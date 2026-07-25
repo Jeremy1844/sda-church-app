@@ -1,17 +1,33 @@
 import { InitialSetup } from '@/components/InitialSetup';
 import {
+  DEFAULT_TEXT_SCALE,
+  isStandaloneMode,
+  parseStoredTextScale,
+  resolvePwaInstallStatus,
+  serializeTextScale,
+  TEXT_SCALE_STORAGE_KEY,
+  type PwaInstallPromptOutcome,
+  type TextScale,
+} from '@/constants/AppPreferences';
+import {
   DEFAULT_LANG,
   LanguageContext,
   SupportedLanguage,
 } from '@/constants/LanguageContext';
 import { resolveSupportedLanguage } from '@/constants/LocaleRegistry';
 import {
-  AppTheme,
+  PwaInstallContext,
+  type BeforeInstallPromptEventLike,
+  type PwaInstallRequestResult,
+} from '@/constants/PwaInstallContext';
+import { TextSizeContext } from '@/constants/TextSizeContext';
+import {
   getAppTheme,
   THEME_DARK,
   THEME_LIGHT,
   THEME_STORAGE_KEY,
   ThemeContext,
+  type AppTheme,
 } from '@/constants/Themes';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeProvider } from '@react-navigation/native';
@@ -19,13 +35,13 @@ import { useFonts } from 'expo-font';
 import * as Localization from 'expo-localization';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import {
   AppState,
   Platform,
   StatusBar,
   StyleSheet,
-  useColorScheme
+  useColorScheme,
 } from 'react-native';
 import { PaperProvider, Snackbar } from 'react-native-paper';
 import 'react-native-reanimated';
@@ -67,14 +83,28 @@ export const UpdateContext = createContext<{
 export default function RootLayout() {
   const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANG);
   const colorScheme = useColorScheme();
-  const [theme, setTheme] = useState(() => getAppTheme(colorScheme === THEME_DARK));
+  const [isDark, setIsDark] = useState(colorScheme === THEME_DARK);
+  const [textScale, setTextScale] = useState<TextScale>(DEFAULT_TEXT_SCALE);
+  const theme = useMemo(() => getAppTheme(isDark, textScale), [isDark, textScale]);
   const [isReady, setIsReady] = useState(false);
   const [showSetup, setShowSetup] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEventLike | null>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [lastInstallOutcome, setLastInstallOutcome] =
+    useState<PwaInstallPromptOutcome>(null);
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'up-to-date'>(
     'idle',
   );
+
+  const installStatus = resolvePwaInstallStatus({
+    canPrompt: installPrompt !== null,
+    isStandalone,
+    isWeb: Platform.OS === 'web',
+    lastPromptOutcome: lastInstallOutcome,
+  });
 
   const getSwUrl = () => {
     // If your app is at the root, use /sw.js. If hosted on GitHub Pages subpath, use /sda-church-app/sw.js
@@ -156,6 +186,76 @@ export default function RootLayout() {
     }
   };
 
+  const requestInstall = async (): Promise<PwaInstallRequestResult> => {
+    if (!installPrompt) {
+      return 'unavailable';
+    }
+
+    const currentPrompt = installPrompt;
+    setInstallPrompt(null);
+
+    try {
+      await currentPrompt.prompt();
+      const choice = await currentPrompt.userChoice;
+      setLastInstallOutcome(choice.outcome);
+      return choice.outcome;
+    } catch {
+      setLastInstallOutcome(null);
+      return 'error';
+    }
+  };
+
+  useEffect(() => {
+    if (
+      Platform.OS !== 'web' ||
+      typeof window === 'undefined' ||
+      typeof navigator === 'undefined'
+    ) {
+      return;
+    }
+
+    const displayModeQuery =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(display-mode: standalone)')
+        : null;
+    const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+    const updateStandaloneState = () => {
+      setIsStandalone(
+        isStandaloneMode(
+          displayModeQuery?.matches ?? false,
+          navigatorWithStandalone.standalone,
+        ),
+      );
+    };
+    const handleBeforeInstallPrompt = (event: Event) => {
+      const candidate = event as BeforeInstallPromptEventLike;
+      if (typeof candidate.prompt !== 'function' || !candidate.userChoice) {
+        return;
+      }
+
+      candidate.preventDefault();
+      setInstallPrompt(candidate);
+      setLastInstallOutcome(null);
+    };
+    const handleInstalled = () => {
+      setInstallPrompt(null);
+      // `appinstalled` confirms installation, but the current browser tab does not become
+      // standalone until the installed app is launched separately.
+      setLastInstallOutcome('accepted');
+    };
+
+    updateStandaloneState();
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleInstalled);
+    displayModeQuery?.addEventListener?.('change', updateStandaloneState);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleInstalled);
+      displayModeQuery?.removeEventListener?.('change', updateStandaloneState);
+    };
+  }, []);
+
   useEffect(() => {
     // Register service worker for PWA support on web
     let subscription: { remove: () => void } | undefined;
@@ -230,10 +330,11 @@ export default function RootLayout() {
 
     async function prepare() {
       try {
-        const [savedLang, savedTheme, setupDone] = await Promise.all([
+        const [savedLang, savedTheme, setupDone, savedTextScale] = await Promise.all([
           AsyncStorage.getItem('user-language'),
           AsyncStorage.getItem(THEME_STORAGE_KEY),
           AsyncStorage.getItem('has-completed-setup'),
+          AsyncStorage.getItem(TEXT_SCALE_STORAGE_KEY),
         ]);
 
         // Always determine fallbacks first
@@ -241,11 +342,8 @@ export default function RootLayout() {
 
         // Use saved settings if they exist, otherwise fallback to system defaults
         setLanguage((savedLang as SupportedLanguage) || systemLang);
-        setTheme(
-          getAppTheme(
-            savedTheme ? savedTheme === THEME_DARK : colorScheme === THEME_DARK,
-          ),
-        );
+        setIsDark(savedTheme ? savedTheme === THEME_DARK : colorScheme === THEME_DARK);
+        setTextScale(parseStoredTextScale(savedTextScale));
 
         if (setupDone !== 'true') {
           setShowSetup(true);
@@ -277,10 +375,15 @@ export default function RootLayout() {
     } else if (typeof val === 'string') {
       next = val === THEME_DARK;
     } else {
-      next = !theme.dark;
+      next = !isDark;
     }
-    setTheme(getAppTheme(next));
+    setIsDark(next);
     await AsyncStorage.setItem(THEME_STORAGE_KEY, next ? THEME_DARK : THEME_LIGHT);
+  };
+
+  const handleSetTextScale = async (nextScale: TextScale) => {
+    setTextScale(nextScale);
+    await AsyncStorage.setItem(TEXT_SCALE_STORAGE_KEY, serializeTextScale(nextScale));
   };
 
   const onCompleteSetup = async () => {
@@ -289,7 +392,8 @@ export default function RootLayout() {
     await Promise.all([
       AsyncStorage.setItem('has-completed-setup', 'true'),
       AsyncStorage.setItem('user-language', language),
-      AsyncStorage.setItem(THEME_STORAGE_KEY, theme.dark ? THEME_DARK : THEME_LIGHT),
+      AsyncStorage.setItem(THEME_STORAGE_KEY, isDark ? THEME_DARK : THEME_LIGHT),
+      AsyncStorage.setItem(TEXT_SCALE_STORAGE_KEY, serializeTextScale(textScale)),
     ]);
     setShowSetup(false);
   };
@@ -324,26 +428,32 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <LanguageContext.Provider value={{ language, setLanguage: handleSetLanguage }}>
-        <ThemeContext.Provider value={{ toggleTheme: handleToggleTheme }}>
-          <UpdateContext.Provider
-            value={{
-              updateAvailable,
-              onUpdate: handleUpdate,
-              onManualCheck: handleManualCheck,
-              updateStatus,
-            }}
-          >
-            <RootLayoutNav
-              theme={theme}
-              showSetup={showSetup}
-              onCompleteSetup={onCompleteSetup}
-              updateAvailable={updateAvailable}
-              onUpdate={handleUpdate}
-              updateStatus={updateStatus}
-              onDismissStatus={() => setUpdateStatus('idle')}
-            />
-          </UpdateContext.Provider>
-        </ThemeContext.Provider>
+        <TextSizeContext.Provider
+          value={{ setTextScale: handleSetTextScale, textScale }}
+        >
+          <PwaInstallContext.Provider value={{ requestInstall, status: installStatus }}>
+            <ThemeContext.Provider value={{ toggleTheme: handleToggleTheme }}>
+              <UpdateContext.Provider
+                value={{
+                  updateAvailable,
+                  onUpdate: handleUpdate,
+                  onManualCheck: handleManualCheck,
+                  updateStatus,
+                }}
+              >
+                <RootLayoutNav
+                  theme={theme}
+                  showSetup={showSetup}
+                  onCompleteSetup={onCompleteSetup}
+                  updateAvailable={updateAvailable}
+                  onUpdate={handleUpdate}
+                  updateStatus={updateStatus}
+                  onDismissStatus={() => setUpdateStatus('idle')}
+                />
+              </UpdateContext.Provider>
+            </ThemeContext.Provider>
+          </PwaInstallContext.Provider>
+        </TextSizeContext.Provider>
       </LanguageContext.Provider>
     </SafeAreaProvider>
   );

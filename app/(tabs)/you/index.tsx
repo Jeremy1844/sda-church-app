@@ -1,12 +1,17 @@
 import { UpdateContext } from '@/app/_layout';
 import { MenuCard } from '@/components/MenuCard';
+import { PwaInstallDialog } from '@/components/PwaInstallDialog';
+import { TextSizeDialog } from '@/components/TextSizeDialog';
+import { scaleTypographyMetric } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { usePwaInstall } from '@/constants/PwaInstallContext';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { ThemeContext, useAppTheme } from '@/constants/Themes';
 import packageJson from '@/package.json';
 import { NavigationStyles } from '@/styles/NavigationStyles';
 import { router, Stack } from 'expo-router';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { List, Switch, Text, TouchableRipple } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,9 +76,23 @@ export default function YouScreen() {
   const { language } = useContext(LanguageContext);
   const { toggleTheme } = useContext(ThemeContext);
   const { onManualCheck, updateStatus } = useContext(UpdateContext);
+  const { status: installStatus } = usePwaInstall();
+  const { textScale } = useTextSize();
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [showTextSize, setShowTextSize] = useState(false);
   const insets = useSafeAreaInsets();
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
   const labels = allLabels[language as keyof typeof allLabels] || allLabels.en;
+  const englishOnly = language !== 'en';
+  const englishSuffix = englishOnly ? ' (English)' : '';
+  const installDescription = {
+    accepted: 'The browser accepted the request; open for next-step guidance.',
+    dismissed: 'The browser prompt was dismissed; reopen for fallback guidance.',
+    'not-applicable': 'Installation guidance is available in the web app.',
+    'prompt-available': 'A browser-provided install option is ready.',
+    standalone: 'The app is already open in standalone mode.',
+    unavailable: 'Open capability-based fallback guidance for this browser.',
+  }[installStatus];
 
   return (
     <>
@@ -87,7 +106,14 @@ export default function YouScreen() {
       >
         <List.Section>
           <List.Subheader
-            style={[NavigationStyles.subheader, { color: theme.colors.onBackground }]}
+            style={[
+              NavigationStyles.subheader,
+              {
+                color: theme.colors.onBackground,
+                fontSize: scaleTypographyMetric(16, textScale),
+                lineHeight: scaleTypographyMetric(22, textScale),
+              },
+            ]}
           >
             {labels.settings}
           </List.Subheader>
@@ -117,6 +143,22 @@ export default function YouScreen() {
               } as any)
             }
           />
+          <MenuCard
+            title={`Text size${englishSuffix}`}
+            description={`${englishOnly ? 'English-only setting. ' : ''}Current: ${Math.round(textScale * 100)}%`}
+            icon="format-size"
+            iconColor={theme.colors.tertiary}
+            onPress={() => setShowTextSize(true)}
+          />
+          {Platform.OS === 'web' && (
+            <MenuCard
+              title={`Install app${englishSuffix}`}
+              description={`${englishOnly ? 'English-only guidance. ' : ''}${installDescription}`}
+              icon="download"
+              iconColor={theme.colors.tertiary}
+              onPress={() => setShowInstallGuide(true)}
+            />
+          )}
           <MenuCard
             title={labels.privacy}
             description={labels.privacySub}
@@ -158,6 +200,11 @@ export default function YouScreen() {
           </TouchableRipple>
         </View>
       </ScrollView>
+      <TextSizeDialog visible={showTextSize} onDismiss={() => setShowTextSize(false)} />
+      <PwaInstallDialog
+        visible={showInstallGuide}
+        onDismiss={() => setShowInstallGuide(false)}
+      />
     </>
   );
 }

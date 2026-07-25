@@ -1,3 +1,4 @@
+import { scaleTypographyMetric } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
 import {
   ALL_SEARCH_LABELS,
@@ -9,6 +10,7 @@ import {
   SearchableItem,
 } from '@/constants/SearchTerms';
 import { ROUTES } from '@/constants/Routes';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { router, useSegments } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -30,7 +32,9 @@ export const UIStateContext = createContext<{
 export const GlobalHeader = (props: any) => {
   const { language } = useContext(LanguageContext);
   const segments = useSegments();
+  const segmentNames = segments as readonly string[];
   const theme = useAppTheme();
+  const { textScale } = useTextSize();
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,8 +63,8 @@ export const GlobalHeader = (props: any) => {
   // In Expo Router, the (tabs) group and the tab names form the first 1-2 segments.
   const isPillarRoot = segments.length <= 2;
 
-  const isBiblePage = segments.includes('bible');
-  const isHymnalPage = segments.includes('english-hymnal');
+  const isBiblePage = segmentNames.includes('bible');
+  const isHymnalPage = segmentNames.includes('english-hymnal');
   const isSubPage = !isPillarRoot;
 
   const title = props.options?.title;
@@ -141,11 +145,11 @@ export const GlobalHeader = (props: any) => {
             onPress={() => {
               if (backTo) {
                 router.navigate(backTo as any);
-              } else if (segments.includes('you')) {
+              } else if (segmentNames.includes('you')) {
                 router.navigate(ROUTES.you as any);
-              } else if (segments.includes('resources')) {
+              } else if (segmentNames.includes('resources')) {
                 router.navigate(ROUTES.resources as any);
-              } else if (segments.includes('home')) {
+              } else if (segmentNames.includes('home')) {
                 router.navigate(ROUTES.home as any);
               } else {
                 router.back();
@@ -178,7 +182,7 @@ export const GlobalHeader = (props: any) => {
                 backgroundColor: theme.colors.surface,
                 elevation: 0,
                 borderRadius: 24,
-                height: 44,
+                height: 44 + scaleTypographyMetric(16, textScale) - 16,
                 marginRight: 12,
                 marginLeft: 12,
               }}
@@ -186,7 +190,7 @@ export const GlobalHeader = (props: any) => {
                 minHeight: 0,
                 paddingBottom: 0,
                 paddingTop: 0,
-                fontSize: 16,
+                fontSize: scaleTypographyMetric(16, textScale),
               }}
               iconColor={theme.colors.onSurfaceVariant}
               placeholderTextColor={theme.colors.onSurfaceVariant}

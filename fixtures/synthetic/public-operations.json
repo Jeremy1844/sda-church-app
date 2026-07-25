@@ -1,0 +1,37 @@
+{
+  "eventFeed": {
+    "schemaVersion": 1,
+    "generatedAt": "2030-01-01T00:00:00.000Z",
+    "timezone": "America/New_York",
+    "events": [
+      {
+        "id": "synthetic-event",
+        "title": "Synthetic event for contract testing",
+        "startsAt": "2030-01-05T15:00:00.000Z",
+        "endsAt": "2030-01-05T16:00:00.000Z",
+        "registrationUrl": "https://example.invalid/synthetic-registration",
+        "registrationDeadline": "2030-01-04T15:00:00.000Z"
+      }
+    ]
+  },
+  "scheduleFeed": {
+    "schemaVersion": 1,
+    "generatedAt": "2030-01-01T00:00:00.000Z",
+    "timezone": "America/New_York",
+    "slots": [
+      {
+        "id": "synthetic-slot",
+        "roleId": "synthetic-role",
+        "startsAt": "2030-01-05T15:00:00.000Z",
+        "status": "filled"
+      }
+    ]
+  },
+  "bulletinFeed": {
+    "schemaVersion": 1,
+    "generatedAt": "2030-01-01T00:00:00.000Z",
+    "weekOf": "2030-01-05",
+    "announcements": [],
+    "verseReference": null
+  }
+}

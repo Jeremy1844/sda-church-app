@@ -18,6 +18,10 @@ import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
 import {
+  canApplyChapterResponse,
+  isAbortError,
+} from '@/services/BibleRequestIntegrity';
+import {
   fetchLatestActivity,
   LatestActivity,
 } from '@/services/LatestActivityService';
@@ -29,12 +33,22 @@ import {
   SunsetCoordinates,
   SUNSET_LOCATION_PRIVACY_COPY,
 } from '@/services/SunsetLocationPolicy';
+import {
+  getRenderedVerseOfDayCacheKey,
+  getVerseOfDayDateKey,
+  parseRenderedVerseOfDay,
+  parseVerseOfDaySelection,
+  RenderedVerseOfDay,
+  selectStableDailyIndex,
+  VerseOfDaySelection,
+  VOTD_CONFIG_KEY,
+} from '@/services/VerseOfDayPolicy';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   ImageBackground,
   Platform,
@@ -52,8 +66,148 @@ const ELMHURST_SUNSET_COORDINATES: SunsetCoordinates = Object.freeze({
 
 type LocationRequestStatus = 'default' | 'requesting' | 'local' | 'unavailable';
 
+function createAbortError() {
+  return Object.assign(new Error('Verse-of-the-day request was cancelled.'), {
+    name: 'AbortError',
+  });
+}
+
+function assertActive(signal: AbortSignal) {
+  if (signal.aborted) throw createAbortError();
+}
+
+async function createDailyVerseSelection(
+  dateKey: string,
+  signal: AbortSignal,
+): Promise<VerseOfDaySelection> {
+  const books = await BibleService.fetchBooks('BSB', signal);
+  assertActive(signal);
+
+  const bookIndex = selectStableDailyIndex(`${dateKey}:book`, books.length);
+  if (bookIndex === null) throw new Error('The Bible provider returned no books.');
+
+  const book = books[bookIndex];
+  const chapterIndex = selectStableDailyIndex(
+    `${dateKey}:${book.id}:chapter`,
+    book.numberOfChapters,
+  );
+  if (chapterIndex === null) {
+    throw new Error('The selected Bible book has no chapters.');
+  }
+
+  const chapter = chapterIndex + 1;
+  const chapterData = await BibleService.fetchChapter('BSB', book.id, chapter, signal);
+  if (
+    !canApplyChapterResponse(signal, chapterData, {
+      translationId: 'BSB',
+      bookId: book.id,
+      chapter,
+    })
+  ) {
+    assertActive(signal);
+    throw new Error('The Bible provider returned the wrong chapter.');
+  }
+
+  const verseIndex = selectStableDailyIndex(
+    `${dateKey}:${book.id}:${chapter}:verse`,
+    chapterData.numberOfVerses,
+  );
+  if (verseIndex === null) {
+    throw new Error('The selected Bible chapter has no verses.');
+  }
+
+  return { bookId: book.id, chapter, verse: verseIndex + 1, dateKey };
+}
+
+async function renderDailyVerse(
+  selection: VerseOfDaySelection,
+  language: SupportedLanguage,
+  requestedTranslationId: string,
+  translationId: string,
+  signal: AbortSignal,
+): Promise<RenderedVerseOfDay> {
+  const books = await BibleService.fetchBooks(translationId, signal);
+  assertActive(signal);
+
+  const book = books.find((candidate) => candidate.id === selection.bookId);
+  if (!book || selection.chapter > book.numberOfChapters) {
+    throw new Error(
+      `${translationId} does not contain the selected daily verse coordinate.`,
+    );
+  }
+
+  const chapterData = await BibleService.fetchChapter(
+    translationId,
+    selection.bookId,
+    selection.chapter,
+    signal,
+  );
+  if (
+    !canApplyChapterResponse(signal, chapterData, {
+      translationId,
+      bookId: selection.bookId,
+      chapter: selection.chapter,
+    })
+  ) {
+    assertActive(signal);
+    throw new Error('The Bible provider returned the wrong chapter.');
+  }
+
+  const verseContent = chapterData.chapter.content.find(
+    (content): content is BibleService.ChapterVerse =>
+      content.type === 'verse' && content.number === selection.verse,
+  );
+  if (!verseContent) {
+    throw new Error(
+      `${translationId} does not contain the selected daily verse coordinate.`,
+    );
+  }
+
+  const text = BibleService.renderVerseToPlainText(translationId, verseContent).trim();
+  if (!text) throw new Error('The selected daily verse has no displayable text.');
+
+  return {
+    ...selection,
+    text: `"${text}"`,
+    reference: `${book.name} ${selection.chapter}:${selection.verse}`,
+    language,
+    requestedTranslationId,
+    translationId,
+  };
+}
+
+async function renderDailyVerseWithFallback(
+  selection: VerseOfDaySelection,
+  language: SupportedLanguage,
+  requestedTranslationId: string,
+  signal: AbortSignal,
+) {
+  try {
+    return await renderDailyVerse(
+      selection,
+      language,
+      requestedTranslationId,
+      requestedTranslationId,
+      signal,
+    );
+  } catch (error) {
+    if (isAbortError(error) || signal.aborted || requestedTranslationId === 'BSB') {
+      throw error;
+    }
+
+    console.warn(
+      `The daily verse is unavailable in ${requestedTranslationId}; using BSB for the same coordinate.`,
+    );
+    return renderDailyVerse(selection, language, requestedTranslationId, 'BSB', signal);
+  }
+}
+
 export default function HomeScreen() {
   const { language } = useContext(LanguageContext);
+  const requestedLanguage = language as SupportedLanguage;
+  const requestedTranslationId =
+    BibleService.DEFAULT_TRANSLATION_MAP[requestedLanguage] || 'BSB';
+  const verseDateKey = getVerseOfDayDateKey(new Date());
   const { textScale } = useTextSize();
   const NavigationStyles = createNavigationStyles(textScale);
   const styles = createStyles(textScale);
@@ -168,14 +322,8 @@ export default function HomeScreen() {
 
   const labels = allLabels[language as keyof typeof allLabels] || allLabels.en;
 
-  const [randomVerse, setRandomVerse] = useState<{
-    text: string;
-    reference: string;
-    bookId: string;
-    chapter: number;
-    verse: number;
-    dateKey: string;
-  } | null>(null);
+  const [randomVerse, setRandomVerse] = useState<RenderedVerseOfDay | null>(null);
+  const verseRequestId = useRef(0);
   const [latestActivity, setLatestActivity] = useState<LatestActivity | null>(null);
 
   const [isSabbath, setIsSabbath] = useState(false);
@@ -192,8 +340,12 @@ export default function HomeScreen() {
 
   const useGps = userCoords !== null;
 
-  const VOTD_CONFIG_KEY = 'votd_selection_config';
-  const VOTD_CACHE_KEY = `votd_cache_${language}`;
+  const displayedVerse =
+    randomVerse?.language === requestedLanguage &&
+    randomVerse.requestedTranslationId === requestedTranslationId &&
+    randomVerse.dateKey === verseDateKey
+      ? randomVerse
+      : null;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -392,116 +544,93 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [useGps, sunsets]); // Re-run timer logic if GPS permission or sunset data changes
 
-  const loadRandomVerse = async () => {
-    try {
-      // Load a new random verse each day at 6 AM local time.
-      // Before 6 AM, show the previous day's verse to maintain consistency with
-      // the "Verse of the Day" concept.
-      const now = new Date();
-      const effectiveDate = new Date(now);
-      if (now.getHours() < 6) effectiveDate.setDate(now.getDate() - 1);
-      const currentDateKey = `${effectiveDate.getFullYear()}-${effectiveDate.getMonth() + 1}-${effectiveDate.getDate()}`;
-
-      const transId =
-        BibleService.DEFAULT_TRANSLATION_MAP[language as SupportedLanguage] || 'BSB';
-
-      // 1. Check if we have coordinates (selection) already cached for today.
-      // We only use the cache for the "Selection" to ensure we pick the same verse,
-      // but we ALWAYS re-render the text from the chapter content to ensure
-      // any fixes to the BibleService renderer are applied immediately.
-      const cached = await AsyncStorage.getItem(VOTD_CACHE_KEY);
-      let selection: { bookId: string; chapter: number; verse: number } | null = null;
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.dateKey === currentDateKey) {
-          selection = {
-            bookId: parsed.bookId,
-            chapter: parsed.chapter,
-            verse: parsed.verse,
-          };
-        }
-      }
-
-      // 3. If no master selection exists for today, generate one
-      if (!selection) {
-        const bsbBooks = await BibleService.fetchBooks('BSB');
-        const rand = BibleService.selectRandomChapter(bsbBooks);
-        if (rand) {
-          const bsbChapter = await BibleService.fetchChapter(
-            'BSB',
-            rand.book.id,
-            rand.chapter,
-          );
-          const vNum = Math.floor(Math.random() * bsbChapter.numberOfVerses) + 1;
-          selection = { bookId: rand.book.id, chapter: rand.chapter, verse: vNum };
-          await AsyncStorage.setItem(
-            VOTD_CONFIG_KEY,
-            JSON.stringify({ ...selection, dateKey: currentDateKey }),
-          );
-        }
-      }
-
-      if (selection) {
-        // 4. Load the text for the current language using the shared selection
-        const books = await BibleService.fetchBooks(transId);
-        const book =
-          books.find((b: BibleService.TranslationBook) => b.id === selection?.bookId) ||
-          books[0];
-        const chapterData = await BibleService.fetchChapter(
-          transId,
-          book.id,
-          selection.chapter,
-        );
-
-        const verseContent = chapterData.chapter.content.find(
-          (c) => c.type === 'verse' && c.number === selection?.verse,
-        ) as BibleService.ChapterVerse;
-
-        if (verseContent) {
-          const text = BibleService.renderVerseToPlainText(transId, verseContent);
-          const newVOTD = {
-            text: `"${text}"`,
-            reference: `${book.name} ${selection.chapter}:${selection.verse}`,
-            bookId: book.id,
-            chapter: selection.chapter,
-            verse: selection.verse,
-            dateKey: currentDateKey,
-          };
-          setRandomVerse(newVOTD);
-          await AsyncStorage.setItem(VOTD_CACHE_KEY, JSON.stringify(newVOTD));
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load random verse:', e);
-    }
-  };
-
   useEffect(() => {
+    const controller = new AbortController();
+    const requestId = ++verseRequestId.current;
+    const cacheKey = getRenderedVerseOfDayCacheKey(requestedLanguage);
+    const isCurrentRequest = () =>
+      !controller.signal.aborted && verseRequestId.current === requestId;
+
+    const loadRandomVerse = async () => {
+      try {
+        // The shared selection is the sole coordinate authority. A language-specific
+        // rendered cache is consulted only after it matches that master selection.
+        const storedSelection = await AsyncStorage.getItem(VOTD_CONFIG_KEY);
+        if (!isCurrentRequest()) return;
+
+        let selection = parseVerseOfDaySelection(storedSelection, verseDateKey);
+        if (!selection) {
+          const candidate = await createDailyVerseSelection(
+            verseDateKey,
+            controller.signal,
+          );
+          if (!isCurrentRequest()) return;
+
+          // Another overlapping load may have established today's master while the
+          // candidate was being fetched. Prefer that valid value before writing.
+          const latestStoredSelection = await AsyncStorage.getItem(VOTD_CONFIG_KEY);
+          if (!isCurrentRequest()) return;
+          selection = parseVerseOfDaySelection(latestStoredSelection, verseDateKey);
+
+          if (!selection) {
+            selection = candidate;
+            await AsyncStorage.setItem(VOTD_CONFIG_KEY, JSON.stringify(selection));
+            if (!isCurrentRequest()) return;
+          }
+        }
+
+        const cachedRaw = await AsyncStorage.getItem(cacheKey);
+        if (!isCurrentRequest()) return;
+        const cachedVerse = parseRenderedVerseOfDay(
+          cachedRaw,
+          selection,
+          requestedLanguage,
+          requestedTranslationId,
+        );
+        if (cachedVerse) setRandomVerse(cachedVerse);
+
+        const renderedVerse = await renderDailyVerseWithFallback(
+          selection,
+          requestedLanguage,
+          requestedTranslationId,
+          controller.signal,
+        );
+        if (!isCurrentRequest()) return;
+
+        setRandomVerse(renderedVerse);
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(renderedVerse));
+      } catch (error) {
+        if (isCurrentRequest() && !isAbortError(error)) {
+          console.warn('Failed to load the daily verse:', error);
+        }
+      }
+    };
+
     loadRandomVerse();
-  }, [language]);
+    return () => controller.abort();
+  }, [requestedLanguage, requestedTranslationId, verseDateKey]);
 
   const handleShare = async () => {
-    if (!randomVerse) return;
-    const transId =
-      BibleService.DEFAULT_TRANSLATION_MAP[language as SupportedLanguage] || 'BSB';
+    if (!displayedVerse) return;
     const translation =
-      BibleService.SUPPORTED_TRANSLATIONS.find((t) => t.id === transId)?.name || transId;
-    const message = `${randomVerse.text}\n\n— ${randomVerse.reference} (${translation})`;
+      BibleService.SUPPORTED_TRANSLATIONS.find(
+        (candidate) => candidate.id === displayedVerse.translationId,
+      )?.name || displayedVerse.translationId;
+    const message = `${displayedVerse.text}\n\n— ${displayedVerse.reference} (${translation})`;
 
-    await outboundShare.share({ title: randomVerse.reference, text: message });
+    await outboundShare.share({ title: displayedVerse.reference, text: message });
   };
 
   const navigateToVerse = () => {
-    if (!randomVerse) return;
+    if (!displayedVerse) return;
     router.push({
       pathname: '/bible',
       params: {
-        bookId: randomVerse.bookId,
-        chapter: randomVerse.chapter.toString(),
-        q: randomVerse.reference,
+        bookId: displayedVerse.bookId,
+        chapter: displayedVerse.chapter.toString(),
+        q: displayedVerse.reference,
         refresh: Date.now().toString(),
-        translationId:
-          BibleService.DEFAULT_TRANSLATION_MAP[language as SupportedLanguage] || 'BSB',
+        translationId: displayedVerse.translationId,
       },
     } as any);
   };
@@ -546,8 +675,8 @@ export default function HomeScreen() {
               marginTop: 4,
             }}
           >
-            {randomVerse
-              ? `${randomVerse.text}\n— ${randomVerse.reference}`
+            {displayedVerse
+              ? `${displayedVerse.text}\n— ${displayedVerse.reference}`
               : labels.subtitle}
           </Text>
           <View
@@ -563,7 +692,7 @@ export default function HomeScreen() {
               mode="outlined"
               icon="share-variant"
               onPress={handleShare}
-              disabled={!randomVerse}
+              disabled={!displayedVerse}
               style={{ borderRadius: 20, flex: 1, borderColor: '#FFFFFF' }}
               textColor="#FFFFFF"
             >
@@ -573,7 +702,7 @@ export default function HomeScreen() {
               mode="contained"
               icon="book-open-variant"
               onPress={navigateToVerse}
-              disabled={!randomVerse}
+              disabled={!displayedVerse}
               style={{ borderRadius: 20, flex: 1 }}
             >
               {(labels as any).readVerse}

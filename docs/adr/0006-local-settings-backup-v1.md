@@ -1,4 +1,4 @@
-# ADR-0002: Local settings backup v1
+# ADR-0006: Local settings backup v1
 
 - **Status:** Accepted
 - **Date:** 2026-07-25
@@ -9,7 +9,7 @@
 Issue #41 asks whether personal app data can be backed up without the church app handling
 PII or operating an account system. The current app has no notes, highlights, bookmarks,
 or user account. Its eligible settings at this decision are language, light/dark theme,
-and setup completion. The base does not have a persisted text-scale setting.
+text size, and setup completion.
 
 The app also stores derived Verse of the Day data and Bible reading position. Those values
 are intentionally outside this first backup contract. Service-worker caches are a separate
@@ -20,23 +20,24 @@ web origin, so neither operation is permitted.
 ## Decision
 
 Provide a web-only, local-file backup screen under You. The app reads and writes only these
-three explicit AsyncStorage keys:
+four explicit AsyncStorage keys:
 
 | Portable field | Storage key | v1 value |
 | --- | --- | --- |
 | `language` | `user-language` | `en`, `zh`, `zh-cn`, or `es` |
 | `theme` | `user-theme` | `light` or `dark` |
+| `textScale` | `user-text-scale` | `1`, `1.25`, or `1.5` |
 | `setupComplete` | `has-completed-setup` | Boolean in the file; `true`/`false` string in storage |
 
 The JSON envelope has a fixed format identifier, schema version `1`, ISO-8601 creation
-time, the exact three-field data object, and a lowercase SHA-256 digest of a canonical JSON
+time, the exact four-field data object, and a lowercase SHA-256 digest of a canonical JSON
 representation of every envelope field except the integrity object. Files over 64 KiB are
 rejected before reading and again after reading. Import rejects malformed JSON, missing or
 unknown fields, unsupported versions, invalid values, invalid timestamps, malformed
 digests, and checksum mismatches.
 
-A valid import is previewed before any write. Restore snapshots all three prior values,
-writes only the three allowlisted keys, and restores the snapshot if any write fails.
+A valid import is previewed before any write. Restore snapshots all four prior values,
+writes only the four allowlisted keys, and restores the snapshot if any write fails.
 Deleting local settings uses the same transaction and removes only those keys. The screen
 states that Verse of the Day caches, Bible position, exported files, and unknown/future
 data are unaffected. A reload is explicit because the root language/theme state is loaded
@@ -65,7 +66,7 @@ workflow is unavailable; they do not simulate a successful backup.
   contain VOTD caches, Bible position, Cache API entries, prayer data, schedules, rosters,
   notes, bookmarks, accounts, identifiers, or analytics.
 - **Deletion:** The delete action is deliberately narrower than clearing all site data. It
-  removes the three v1 settings only and names that boundary in its confirmation dialog.
+  removes the four v1 settings only and names that boundary in its confirmation dialog.
 
 ## Migration policy
 
@@ -76,8 +77,7 @@ field.
 
 Before a future version adds a field, its issue must classify the field, document why it
 belongs in a portable file, define validation and deletion behavior, add round-trip and
-migration tests, and update the preview. Persisted text scale may qualify after that
-setting exists. Notes, highlights, bookmarks, prayer, schedule, roster, authentication,
+migration tests, and update the preview. Notes, highlights, bookmarks, prayer, schedule, roster, authentication,
 and other potentially sensitive data require a separate privacy/security decision and
 must not be folded into v1.
 

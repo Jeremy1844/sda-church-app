@@ -1,10 +1,12 @@
 export type BackupLanguage = 'en' | 'zh' | 'zh-cn' | 'es';
 export type BackupTheme = 'light' | 'dark';
+export type BackupTextScale = 1 | 1.25 | 1.5;
 
 export interface BackupSettings {
   language: BackupLanguage;
   theme: BackupTheme;
   setupComplete: boolean;
+  textScale: BackupTextScale;
 }
 
 export interface LocalBackupEnvelope {
@@ -32,6 +34,7 @@ export const BACKUP_VERSION: 1;
 export const MAX_BACKUP_BYTES: 65536;
 export const SHA256_ALGORITHM: 'SHA-256';
 export const SUPPORTED_LANGUAGES: readonly BackupLanguage[];
+export const SUPPORTED_TEXT_SCALES: readonly BackupTextScale[];
 export const SUPPORTED_THEMES: readonly BackupTheme[];
 
 export function canonicalize(value: unknown): string;

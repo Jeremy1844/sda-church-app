@@ -6,6 +6,7 @@ const MAX_BACKUP_BYTES = 64 * 1024;
 const SHA256_ALGORITHM = 'SHA-256';
 const SUPPORTED_LANGUAGES = Object.freeze(['en', 'zh', 'zh-cn', 'es']);
 const SUPPORTED_THEMES = Object.freeze(['light', 'dark']);
+const SUPPORTED_TEXT_SCALES = Object.freeze([1, 1.25, 1.5]);
 const SHA256_HEX = /^[a-f0-9]{64}$/;
 
 function isPlainObject(value) {
@@ -92,7 +93,11 @@ function validateCreatedAt(createdAt) {
 }
 
 function validateBackupSettings(settings) {
-  assertExactKeys(settings, ['language', 'setupComplete', 'theme'], 'Backup settings');
+  assertExactKeys(
+    settings,
+    ['language', 'setupComplete', 'textScale', 'theme'],
+    'Backup settings',
+  );
 
   if (!SUPPORTED_LANGUAGES.includes(settings.language)) {
     throw new Error('Backup language is unsupported.');
@@ -103,11 +108,15 @@ function validateBackupSettings(settings) {
   if (typeof settings.setupComplete !== 'boolean') {
     throw new Error('Backup setup state must be true or false.');
   }
+  if (!SUPPORTED_TEXT_SCALES.includes(settings.textScale)) {
+    throw new Error('Backup text scale is unsupported.');
+  }
 
   return {
     language: settings.language,
     theme: settings.theme,
     setupComplete: settings.setupComplete,
+    textScale: settings.textScale,
   };
 }
 
@@ -293,6 +302,7 @@ module.exports = {
   MAX_BACKUP_BYTES,
   SHA256_ALGORITHM,
   SUPPORTED_LANGUAGES,
+  SUPPORTED_TEXT_SCALES,
   SUPPORTED_THEMES,
   applyKeyValueTransaction,
   canonicalize,

@@ -22,6 +22,7 @@ const settings = {
   language: 'zh',
   theme: 'dark',
   setupComplete: true,
+  textScale: 1.25,
 };
 
 test('canonicalize sorts object keys recursively and preserves array order', () => {
@@ -51,7 +52,7 @@ test('creates and validates a stable SHA-256 backup envelope', async () => {
 
   const reordered = JSON.stringify({
     integrity: envelope.integrity,
-    data: { setupComplete: true, theme: 'dark', language: 'zh' },
+    data: { textScale: 1.25, setupComplete: true, theme: 'dark', language: 'zh' },
     createdAt: envelope.createdAt,
     version: envelope.version,
     format: envelope.format,
@@ -80,7 +81,7 @@ test('rejects unsupported fields, versions, values, and prototype-like input', a
   await assert.rejects(
     validateBackupText(
       `{"format":"${BACKUP_FORMAT}","version":1,"createdAt":"2026-07-25T12:34:56.000Z",` +
-        '"data":{"language":"en","theme":"light","setupComplete":true,' +
+        '"data":{"language":"en","theme":"light","setupComplete":true,"textScale":1,' +
         '"__proto__":{}},"integrity":{"algorithm":"SHA-256","digest":"' +
         `${'0'.repeat(64)}"}}`,
       sha256,
@@ -93,15 +94,16 @@ test('rejects unsupported fields, versions, values, and prototype-like input', a
   );
 });
 
-test('accepts every v1 setting boundary and rejects invalid setup state', () => {
+test('accepts every v1 setting boundary and rejects invalid values', () => {
   for (const language of ['en', 'zh', 'zh-cn', 'es']) {
     for (const theme of ['light', 'dark']) {
       for (const setupComplete of [false, true]) {
-        assert.deepEqual(validateBackupSettings({ language, theme, setupComplete }), {
-          language,
-          theme,
-          setupComplete,
-        });
+        for (const textScale of [1, 1.25, 1.5]) {
+          assert.deepEqual(
+            validateBackupSettings({ language, theme, setupComplete, textScale }),
+            { language, theme, setupComplete, textScale },
+          );
+        }
       }
     }
   }
@@ -109,6 +111,10 @@ test('accepts every v1 setting boundary and rejects invalid setup state', () => 
   assert.throws(
     () => validateBackupSettings({ ...settings, setupComplete: 'true' }),
     /must be true or false/,
+  );
+  assert.throws(
+    () => validateBackupSettings({ ...settings, textScale: 1.1 }),
+    /text scale is unsupported/,
   );
 });
 
@@ -134,16 +140,17 @@ test('storage transaction restores every prior value after a partial write failu
     ['user-language', 'en'],
     ['user-theme', 'light'],
     ['has-completed-setup', 'true'],
+    ['user-text-scale', '1'],
     ['votd_cache_en', '{"must":"remain untouched"}'],
   ]);
-  let failThemeWriteOnce = true;
+  let failTextScaleWriteOnce = true;
   const storage = {
     async getItem(key) {
       return values.has(key) ? values.get(key) : null;
     },
     async setItem(key, value) {
-      if (key === 'user-theme' && value === 'dark' && failThemeWriteOnce) {
-        failThemeWriteOnce = false;
+      if (key === 'user-text-scale' && value === '1.5' && failTextScaleWriteOnce) {
+        failTextScaleWriteOnce = false;
         throw new Error('simulated quota failure');
       }
       values.set(key, value);
@@ -158,6 +165,7 @@ test('storage transaction restores every prior value after a partial write failu
       ['user-language', 'es'],
       ['user-theme', 'dark'],
       ['has-completed-setup', 'false'],
+      ['user-text-scale', '1.5'],
     ]),
     /previous settings were restored/,
   );
@@ -165,6 +173,7 @@ test('storage transaction restores every prior value after a partial write failu
     'user-language': 'en',
     'user-theme': 'light',
     'has-completed-setup': 'true',
+    'user-text-scale': '1',
     votd_cache_en: '{"must":"remain untouched"}',
   });
 });

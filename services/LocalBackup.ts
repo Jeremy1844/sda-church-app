@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { SupportedLanguage } from '@/constants/LanguageContext';
+import type { TextScale } from '@/constants/AppPreferences';
 import {
   LANGUAGE_STORAGE_KEY,
   SETUP_STORAGE_KEY,
+  TEXT_SCALE_STORAGE_KEY,
   THEME_STORAGE_KEY,
 } from '@/constants/StorageKeys';
 import {
@@ -26,6 +28,7 @@ export const BACKED_UP_STORAGE_KEYS = Object.freeze([
   LANGUAGE_STORAGE_KEY,
   THEME_STORAGE_KEY,
   SETUP_STORAGE_KEY,
+  TEXT_SCALE_STORAGE_KEY,
 ]);
 
 async function sha256Hex(value: string): Promise<string> {
@@ -43,12 +46,14 @@ async function sha256Hex(value: string): Promise<string> {
 export async function readCurrentBackupSettings(
   language: SupportedLanguage,
   isDarkTheme: boolean,
+  textScale: TextScale,
 ): Promise<BackupSettings> {
   const setupValue = await AsyncStorage.getItem(SETUP_STORAGE_KEY);
   return validateBackupSettings({
     language,
     theme: isDarkTheme ? 'dark' : 'light',
     setupComplete: setupValue === 'true',
+    textScale,
   });
 }
 
@@ -73,6 +78,7 @@ export async function restoreLocalBackup(settings: BackupSettings): Promise<void
     [LANGUAGE_STORAGE_KEY, validated.language],
     [THEME_STORAGE_KEY, validated.theme],
     [SETUP_STORAGE_KEY, validated.setupComplete ? 'true' : 'false'],
+    [TEXT_SCALE_STORAGE_KEY, String(validated.textScale)],
   ];
   await applyKeyValueTransaction(AsyncStorage, changes);
 }

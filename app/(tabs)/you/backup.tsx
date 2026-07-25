@@ -1,5 +1,6 @@
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import {
   createLocalBackup,
@@ -96,6 +97,7 @@ function selectJsonFile(onSelect: (file: File) => void): void {
 
 export default function BackupScreen() {
   const { language } = useContext(LanguageContext);
+  const { textScale } = useTextSize();
   const theme = useAppTheme();
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -111,7 +113,7 @@ export default function BackupScreen() {
     setBusy('export');
     setStatus(null);
     try {
-      const settings = await readCurrentBackupSettings(language, theme.dark);
+      const settings = await readCurrentBackupSettings(language, theme.dark, textScale);
       const envelope = await createLocalBackup(settings);
       downloadJson(serializeLocalBackup(envelope), envelope.createdAt);
       setStatus({
@@ -179,7 +181,7 @@ export default function BackupScreen() {
       setReloadNeeded(true);
       setStatus({
         kind: 'success',
-        text: 'Language, theme, and setup settings were deleted. Reload to return to setup.',
+        text: 'Language, theme, text size, and setup settings were deleted. Reload to return to setup.',
       });
     } catch (error) {
       setStatus({ kind: 'error', text: errorMessage(error) });
@@ -231,7 +233,7 @@ export default function BackupScreen() {
               v1 scope
             </Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              Included: language, light/dark theme, and setup completion.
+              Included: language, light/dark theme, text size, and setup completion.
             </Text>
             <Text
               variant="bodyMedium"
@@ -324,7 +326,7 @@ export default function BackupScreen() {
               Delete backed-up local settings
             </Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-              This deletes only the three settings listed above from this browser. Exported
+              This deletes only the four settings listed above from this browser. Exported
               files, Verse of the Day caches, and Bible reading position are not deleted.
             </Text>
             <Button
@@ -358,8 +360,11 @@ export default function BackupScreen() {
             <Text variant="bodyMedium" style={styles.previewLine}>
               Setup complete: {preview?.data.setupComplete ? 'Yes' : 'No'}
             </Text>
+            <Text variant="bodyMedium" style={styles.previewLine}>
+              Text size: {preview ? `${Math.round(preview.data.textScale * 100)}%` : ''}
+            </Text>
             <Text variant="bodySmall" style={styles.previewNotice}>
-              Restoring replaces only these three local settings. No other stored keys are
+              Restoring replaces only these four local settings. No other stored keys are
               read, changed, or deleted.
             </Text>
           </Dialog.Content>
@@ -380,7 +385,7 @@ export default function BackupScreen() {
           <Dialog.Title>Delete local settings?</Dialog.Title>
           <Dialog.Content>
             <Text variant="bodyMedium">
-              This permanently removes language, theme, and setup completion from this
+              This permanently removes language, theme, text size, and setup completion from this
               browser. It does not delete a backup file already downloaded to your device.
               The app will return to setup after you reload.
             </Text>

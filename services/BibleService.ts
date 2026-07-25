@@ -12,6 +12,10 @@
 export const API_BASE = 'https://bible.helloao.org/api';
 
 import { SupportedLanguage } from '@/constants/LanguageContext';
+import {
+  anchorSplitClosingPunctuation,
+  segmentDisplayText,
+} from '@/services/BibleRendering';
 
 export const SUPPORTED_TRANSLATIONS = [
   { id: 'BSB', name: 'BSB', lang: 'en' },
@@ -370,15 +374,7 @@ export function startsWithPunctuationOrSpace(text: string): boolean {
  * while keeping punctuation and layout whitespace visually distinct.
  */
 export function segmentText(text: string) {
-  const match = text.match(
-    /^([\s\n]*)(.*?)(([.,;!?:'\"\uff1b\uff1f\u3002\uff0c\uff1a\uff09)]*)(\s*))$/,
-  );
-  return {
-    leading: match ? match[1] : '',
-    core: match ? match[2] : text,
-    trailingPunct: match ? match[4] : '',
-    trailingSpace: match ? match[5] : '',
-  };
+  return segmentDisplayText(text);
 }
 
 /**
@@ -520,10 +516,20 @@ export async function fetchChapter(
     // meaningful whitespace and newlines for poetic formatting.
     if (data.chapter?.content) {
       data.chapter.content = data.chapter.content.map((item) => {
-        if (item.type === 'verse' || item.type === 'hebrew_subtitle') {
+        if (item.type === 'verse') {
           return {
             ...item,
-            content: normalizeContentSequence(item.content),
+            content: anchorSplitClosingPunctuation(item.content, (text) =>
+              isSelahMarker(translation, text),
+            ),
+          };
+        }
+        if (item.type === 'hebrew_subtitle') {
+          return {
+            ...item,
+            content: anchorSplitClosingPunctuation(item.content, (text) =>
+              isSelahMarker(translation, text),
+            ),
           };
         }
         return item;
@@ -535,78 +541,6 @@ export async function fetchChapter(
     console.error(`Failed to load chapter ${book} ${chapter}`, e);
     throw e;
   }
-}
-
-/**
- * Corrects tokenization artifacts where punctuation or whitespace is separated
- * from its parent word by footnote markers or metadata objects.
- *
- * 1. Anchors trailing punctuation: If a string segment starts with punctuation
- *    (.,;!?) and follows a footnote marker, it moves that punctuation to the
- *    preceding text node so they remain visually bound.
- * 2. Preserves structure: Ensures explicit newlines and heavy whitespace
- *    are maintained for poetic and right-aligned text blocks.
- */
-function normalizeContentSequence(content: any[]): any[] {
-  const result: any[] = [];
-
-  for (let i = 0; i < content.length; i++) {
-    let current = content[i];
-
-    /**
-     * 1. Punctuation Anchoring
-     * Look for tokens starting with whitespace/newlines followed by punctuation.
-     * If found, we anchor the punctuation back to the word before the footnote,
-     * but we "shift" the newline so it remains at the start of the remaining
-     * text (like "Selah"), ensuring formatting isn't lost.
-     */
-    const punctMatch =
-      typeof current === 'string' ? current.match(/^([\s]*)([.,;!?:'"]+)/) : null;
-
-    if (punctMatch && result.length > 0) {
-      const leadingWhitespace = punctMatch[1];
-      const leadingPunct = punctMatch[2];
-
-      let anchorIdx = -1;
-      // Scan backwards for the nearest available text node.
-      // We MUST stop if we encounter a newline (\n), as punctuation should
-      // not be anchored to a word on a different structural line.
-      for (let j = result.length - 1; j >= 0; j--) {
-        const prev = result[j];
-        if (typeof prev === 'string' && prev.includes('\n')) break;
-        if (typeof prev === 'string' || (typeof prev === 'object' && 'text' in prev)) {
-          anchorIdx = j;
-          break;
-        }
-      }
-
-      if (anchorIdx !== -1) {
-        const anchor = result[anchorIdx];
-        if (typeof anchor === 'string') {
-          // Only trim horizontal whitespace; preserving \n if present in the anchor
-          result[anchorIdx] = anchor.replace(/[ \t]+$/, '') + leadingPunct;
-        } else {
-          result[anchorIdx] = {
-            ...anchor,
-            text: anchor.text.replace(/[ \t]+$/, '') + leadingPunct,
-          };
-        }
-        // Reconstruct the token: preserve the whitespace (newlines) and strip
-        // only the shifted punctuation. This fixes the "welding" (?Selah) bug.
-        const remainingText = (current as string).substring(
-          leadingWhitespace.length + leadingPunct.length,
-        );
-        current = leadingWhitespace + remainingText;
-      }
-    }
-
-    // Add to result while preserving structural whitespace and newlines
-    if (current !== '') {
-      result.push(current);
-    }
-  }
-
-  return result;
 }
 
 /**

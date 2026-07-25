@@ -32,6 +32,7 @@ import * as SearchTerms from '@/constants/SearchTerms';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
 import { getAdjacentChapter } from '@/services/BibleNavigation';
+import { createVerseRenderPlan } from '@/services/BibleRendering';
 import { NavigationStyles } from '@/styles/NavigationStyles';
 import { ReaderStyles } from '@/styles/ReaderStyles';
 
@@ -815,19 +816,12 @@ export default function BibleScreen() {
 
       // 1. Handle Liturgical Markers (Selah/Higgaion)
       if (isSelah) {
-        // Wrap Selah in a View to ensure it behaves as a block-level element
-        // allowing `textAlign: 'right'` to work consistently across platforms.
         return (
-          <View key={i} style={{ width: '100%' }}>
+          <View key={i} style={ReaderStyles.liturgicalMarkerRow}>
             <Text
               style={[
-                {
-                  textAlign: 'right',
-                  fontStyle: 'italic',
-                  opacity: 0.7,
-                  marginTop: 4,
-                  marginBottom: 2,
-                },
+                ReaderStyles.liturgicalMarkerText,
+                { color: theme.colors.onBackground },
               ]}
             >
               <Text
@@ -1047,17 +1041,24 @@ export default function BibleScreen() {
           inlineBuffer = [];
         };
 
-        content.content.forEach((item, i) => {
-          const textValue = typeof item === 'string' ? item : (item as any).text || '';
-          const isSelah = BibleService.isSelahMarker(supportedTranslation.id, textValue);
+        const renderPlan = createVerseRenderPlan(content.content, (text) =>
+          BibleService.isSelahMarker(supportedTranslation.id, text),
+        );
 
-          if (isSelah) {
-            flushBuffer(`text-pre-${i}`);
+        renderPlan.forEach((run) => {
+          if (run.kind === 'marker') {
+            flushBuffer(`text-pre-${run.entry.index}`);
             verseElements.push(
-              renderItemContent(item, i, content.content, hasFootnotes, isSelected),
+              renderItemContent(
+                run.entry.item,
+                run.entry.index,
+                content.content,
+                hasFootnotes,
+                isSelected,
+              ),
             );
           } else {
-            inlineBuffer.push({ item, index: i });
+            inlineBuffer.push(...run.entries);
           }
         });
         flushBuffer('text-final');

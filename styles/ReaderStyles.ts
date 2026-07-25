@@ -117,6 +117,18 @@ export const ReaderStyles = StyleSheet.create({
   loader: { marginTop: 50 },
   heading: { fontSize: 20, fontWeight: '800', marginTop: 32, marginBottom: 8 },
   verseContainer: { fontSize: 18, lineHeight: 28, marginBottom: 12 },
+  liturgicalMarkerRow: {
+    width: '100%',
+    alignItems: 'stretch',
+  },
+  liturgicalMarkerText: {
+    width: '100%',
+    textAlign: 'right',
+    fontStyle: 'italic',
+    opacity: 0.7,
+    marginTop: 4,
+    marginBottom: 2,
+  },
   hebrewSubtitle: { fontSize: 16, marginBottom: 16, opacity: 0.8 },
   inlineHeading: { fontWeight: '700', fontSize: 14, lineHeight: 24 },
   footnoteMarker: {

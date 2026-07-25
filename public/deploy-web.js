@@ -23,7 +23,7 @@ function run(command, args) {
 function deploy({ buildOnly = false } = {}) {
   run(npmCommand, ['run', 'version:check']);
   fs.rmSync(distPath, { recursive: true, force: true });
-  run(npxCommand, ['expo', 'export', '--platform', 'web', '--clear']);
+  run(npmCommand, ['run', 'build:web']);
 
   if (!buildOnly) run(npxCommand, ['gh-pages', '-d', 'dist', '--dotfiles']);
 }

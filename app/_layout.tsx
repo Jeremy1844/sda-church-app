@@ -83,29 +83,7 @@ export default function RootLayout() {
       : '/sw.js';
   };
 
-  const nuclearRefresh = async () => {
-    if (Platform.OS === 'web') {
-      // If the user is offline, we must NOT clear the caches.
-      // Wiping the cache while offline would immediately break the PWA's
-      // ability to serve the app on the next reload or lazy-load navigation.
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-
-      try {
-        if ('caches' in window) {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((key) => caches.delete(key)));
-        }
-        // Bypass HTTP cache for the main entry point to ensure fresh index.html
-        await fetch(window.location.href, { cache: 'reload' }).catch(() => {});
-      } catch (e) {
-        console.warn('Update cleanup failed:', e);
-      }
-    }
-  };
-
   const handleUpdate = async (workerOverride?: any) => {
-    await nuclearRefresh();
-
     const worker = workerOverride || waitingWorker;
     if (worker) {
       worker.postMessage({ type: 'SKIP_WAITING' });
@@ -129,18 +107,16 @@ export default function RootLayout() {
       try {
         const swUrl = getSwUrl();
 
-        // Step 1: Nuclear Refresh (Clear all caches)
-        await nuclearRefresh();
-
-        // Step 2: Bypass sw.js cache
+        // Bypass the HTTP cache for the worker script without deleting the last-known-good
+        // app cache. The activating worker owns old-version cache cleanup.
         await fetch(swUrl, { cache: 'reload' }).catch(() => {});
 
         const registration = await navigator.serviceWorker.getRegistration();
         if (registration) {
-          // Step 3: Trigger the browser's update check
+          // Trigger the browser's update check
           await registration.update();
 
-          // Step 4: The Magic Wait - give registration properties time to populate
+          // Give registration properties time to populate.
           await new Promise((resolve) => setTimeout(resolve, 800));
 
           if (registration.waiting) {
@@ -163,9 +139,8 @@ export default function RootLayout() {
             setUpdateAvailable(false);
 
             if (!options?.isAuto) {
-              // For manual clicks, we show success and reload anyway to be safe
+              // A current build needs no forced reload or cache deletion.
               setUpdateStatus('up-to-date');
-              setTimeout(() => handleUpdate(), 1200);
             } else {
               // For auto-checks, we just go back to idle to avoid a reload loop
               setUpdateStatus('idle');
@@ -190,18 +165,11 @@ export default function RootLayout() {
         const swUrl = getSwUrl();
 
         try {
-          // Ensure we start with a clean cache on every app launch to prevent reversions.
-          await nuclearRefresh();
-
-          // Bypassing the HTTP cache for the service worker file itself ensures that
-          // the browser sees the byte-change immediately on app start. This prevents
-          // "reversions" where the app might otherwise load an old cached registration
-          // during a cold start/restart.
+          // Bypass the HTTP cache for the worker script while preserving offline assets.
           await fetch(swUrl, { cache: 'reload' }).catch(() => {});
 
           const registration = await navigator.serviceWorker.register(swUrl, {
-            // Ensures the browser checks the network for sw.js instead of its HTTP cache,
-            // which is a primary cause of "reversion" issues on cold starts.
+            // Always revalidate the worker script itself.
             updateViaCache: 'none',
           });
           console.log('SW registered with scope:', registration.scope);
@@ -210,7 +178,6 @@ export default function RootLayout() {
           // 1. Check if there is already an updated worker waiting
           if (registration.waiting) {
             console.log('New SW already waiting. Auto-updating...');
-            // await nuclearRefresh();     TODO: Causes infinite loop and app crashes
             registration.waiting.postMessage({ type: 'SKIP_WAITING' });
           }
 
@@ -222,9 +189,7 @@ export default function RootLayout() {
                 if (installingWorker.state === 'installed') {
                   if (navigator.serviceWorker.controller) {
                     console.log('New SW content ready. Auto-updating...');
-                    nuclearRefresh().then(() => {
-                      installingWorker.postMessage({ type: 'SKIP_WAITING' });
-                    });
+                    installingWorker.postMessage({ type: 'SKIP_WAITING' });
                   } else {
                     console.log('SW installed for the first time.');
                   }

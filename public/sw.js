@@ -3,6 +3,8 @@
 // DO NOT EDIT THIS MANUALLY, as it is verified by the release quality gate.
 const VERSION = '0.23.0';
 const CACHE_NAME = `sda-church-v${VERSION}`;
+const APP_BASE_PATH = '/sda-church-app';
+const PRECACHE_URLS = [];
 const NEVER_CACHE_PATH_PREFIXES = [
   '/api/',
   '/auth/',
@@ -32,7 +34,9 @@ function isCacheableResponse(response) {
 }
 
 if (typeof self !== 'undefined') {
-  self.addEventListener('install', () => {});
+  self.addEventListener('install', (event) => {
+    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
+  });
 
   self.addEventListener('activate', (event) => {
     event.waitUntil(
@@ -65,7 +69,18 @@ if (typeof self !== 'undefined') {
           }
           return response;
         })
-        .catch(async () => (await caches.match(event.request)) || Response.error()),
+        .catch(async () => {
+          const exactMatch = await caches.match(event.request);
+          if (exactMatch) return exactMatch;
+          if (event.request.mode === 'navigate') {
+            return (
+              (await caches.match(`${APP_BASE_PATH}/`)) ||
+              (await caches.match(`${APP_BASE_PATH}/index.html`)) ||
+              Response.error()
+            );
+          }
+          return Response.error();
+        }),
     );
   });
 
@@ -79,6 +94,8 @@ if (typeof self !== 'undefined') {
 if (typeof module !== 'undefined') {
   module.exports = {
     NEVER_CACHE_PATH_PREFIXES,
+    APP_BASE_PATH,
+    PRECACHE_URLS,
     isCacheablePath,
     isCacheableResponse,
     isSameOriginRequest,

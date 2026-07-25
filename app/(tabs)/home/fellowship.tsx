@@ -444,7 +444,13 @@ export default function FellowshipsAndFoodScreen() {
                 <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onPrimaryContainer, marginBottom: 4 }}>
                   {labels.flushingMealsTitle}
                 </Text>
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, lineHeight: 20 }}>
+                <Text
+                  variant="bodyMedium"
+                  style={{
+                    color: theme.colors.onSurfaceVariant,
+                    lineHeight: scaleTypographyMetric(20, textScale),
+                  }}
+                >
                   {labels.flushingMealsDesc}
                 </Text>
               </View>

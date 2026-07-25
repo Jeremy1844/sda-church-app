@@ -1,3 +1,4 @@
+import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { DESIGN_TOKENS } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
@@ -19,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function LegalScreen() {
   const { textScale } = useTextSize();
   const NavigationStyles = createNavigationStyles(textScale);
+  const styles = createStyles(textScale);
   const theme = useAppTheme();
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -104,9 +106,9 @@ export default function LegalScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (textScale: TextScale) => StyleSheet.create({
   title: { fontWeight: 'bold', marginBottom: 5 },
   lastUpdated: { marginBottom: 20 },
   sectionHeader: { fontWeight: 'bold', marginTop: 15, marginBottom: 5 },
-  bodyText: { lineHeight: 22 },
+  bodyText: { lineHeight: scaleTypographyMetric(22, textScale) },
 });

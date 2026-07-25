@@ -1,3 +1,4 @@
+import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
@@ -99,6 +100,7 @@ export default function BackupScreen() {
   const { language } = useContext(LanguageContext);
   const { textScale } = useTextSize();
   const NavigationStyles = createNavigationStyles(textScale);
+  const styles = createStyles(textScale);
   const theme = useAppTheme();
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
@@ -410,7 +412,7 @@ export default function BackupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (textScale: TextScale) => StyleSheet.create({
   content: {
     width: '100%',
     maxWidth: 760,
@@ -421,7 +423,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   intro: {
-    lineHeight: 21,
+    lineHeight: scaleTypographyMetric(21, textScale),
     marginBottom: 16,
   },
   card: {
@@ -433,7 +435,7 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     marginTop: 8,
-    lineHeight: 20,
+    lineHeight: scaleTypographyMetric(20, textScale),
   },
   buttonGroup: {
     gap: 12,
@@ -462,6 +464,6 @@ const styles = StyleSheet.create({
   },
   previewNotice: {
     marginTop: 16,
-    lineHeight: 18,
+    lineHeight: scaleTypographyMetric(18, textScale),
   },
 });

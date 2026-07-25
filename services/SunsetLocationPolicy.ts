@@ -25,6 +25,7 @@ export type SunsetTimesState =
       fridayDate: string;
       saturdayDate: string;
       tzid: string;
+      range: VerifiedSunsetRange;
     }>;
 
 export type SabbathWindow = Readonly<{
@@ -159,7 +160,9 @@ export function createSunsetRangeRequest(now: Date): SunsetRangeRequest {
 
   const utcToday = formatUtcCalendarDate(now);
   const expectedDates = Object.freeze(
-    Array.from({ length: 12 }, (_, index) =>
+    // Two weeks ahead plus a one-day location/UTC margin guarantees that the
+    // verified response contains both the current and following Fri/Sat pair.
+    Array.from({ length: 17 }, (_, index) =>
       addDaysToCalendarDate(utcToday, index - 2),
     ),
   );

@@ -70,13 +70,13 @@ test('sunset results are bound to their exact location source and coordinates', 
   );
 });
 
-test('the v2 request covers UTC today minus two through plus nine in one range', () => {
+test('the v2 request contains two complete Fri/Sat pairs across UTC/location skew', () => {
   assert.equal(request.dateStart, '2030-01-03');
-  assert.equal(request.dateEnd, '2030-01-14');
-  assert.equal(request.expectedDates.length, 12);
+  assert.equal(request.dateEnd, '2030-01-19');
+  assert.equal(request.expectedDates.length, 17);
   assert.equal(
     getSunsetApiRangeUrl(elmhurst.lat, elmhurst.lng, request.dateStart, request.dateEnd),
-    'https://api.sunrise-sunset.org/v2?lat=40.74546&lng=-73.88914&date_start=2030-01-03&date_end=2030-01-14',
+    'https://api.sunrise-sunset.org/v2?lat=40.74546&lng=-73.88914&date_start=2030-01-03&date_end=2030-01-19',
   );
   assert.throws(() => createSunsetRangeRequest(new Date(Number.NaN)), /invalid/);
 });
@@ -208,6 +208,8 @@ test('Home keeps consent explicit, bounds requests, and visibly links required a
   assert.match(source, /SUNSET_REQUEST_TIMEOUT_MS/);
   assert.match(source, /geolocationRequestId\.current !== requestId/);
   assert.match(source, /getSunsetApiRangeUrl/);
+  assert.match(source, /range: verifiedRange/);
+  assert.match(source, /selectNextSunsetPair\(sunsetState\.range, now\)/);
   assert.match(source, /Data: Sunrise-Sunset\.org/);
   assert.match(source, /SUNSET_PROVIDER_ATTRIBUTION_URL/);
   assert.equal(SUNSET_PROVIDER_ATTRIBUTION_URL, 'https://sunrise-sunset.org/');

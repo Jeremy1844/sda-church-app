@@ -549,9 +549,10 @@ export default function HomeScreen() {
           location.coordinates,
           sunsetRangeRequest.expectedDates,
         );
-        const pair = verifiedRange
-          ? selectNextSunsetPair(verifiedRange, new Date())
-          : null;
+        if (!verifiedRange) {
+          throw new Error('Sunset provider returned an invalid range.');
+        }
+        const pair = selectNextSunsetPair(verifiedRange, new Date());
         if (!pair) throw new Error('Sunset provider returned no valid upcoming pair.');
 
         if (controller.signal.aborted) {
@@ -571,6 +572,7 @@ export default function HomeScreen() {
           fridayDate: pair.fridayDate,
           saturdayDate: pair.saturdayDate,
           tzid: pair.tzid,
+          range: verifiedRange,
         });
       } catch (error) {
         if (sunsetRequestId.current !== requestId) return;
@@ -634,11 +636,42 @@ export default function HomeScreen() {
     if (!sunsetTimesReady || sunsetState.status !== 'ready') return;
 
     const updateTimer = () => {
-      const window = calculateSabbathWindow(
-        new Date(),
+      const now = new Date();
+      let window = calculateSabbathWindow(
+        now,
         sunsetState.fri,
         sunsetState.sat,
       );
+
+      // The validated range intentionally contains the following Fri/Sat pair.
+      // Advance locally at Saturday sunset so the truthful next countdown does not
+      // disappear behind a network request. Refresh only after the range is exhausted.
+      if (!window) {
+        const nextPair = selectNextSunsetPair(sunsetState.range, now);
+        if (
+          nextPair &&
+          (nextPair.fridayDate !== sunsetState.fridayDate ||
+            nextPair.saturdayDate !== sunsetState.saturdayDate)
+        ) {
+          window = calculateSabbathWindow(now, nextPair.fri, nextPair.sat);
+          if (window) {
+            setSunsetState((current) =>
+              current.status === 'ready' &&
+              current.requestId === sunsetState.requestId
+                ? {
+                    ...current,
+                    fri: nextPair.fri,
+                    sat: nextPair.sat,
+                    fridayDate: nextPair.fridayDate,
+                    saturdayDate: nextPair.saturdayDate,
+                    tzid: nextPair.tzid,
+                  }
+                : current,
+            );
+          }
+        }
+      }
+
       if (!window) {
         setCountdown('');
         setTargetDate(null);

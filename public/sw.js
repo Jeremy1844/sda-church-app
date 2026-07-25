@@ -60,6 +60,10 @@ function isCacheablePath(pathname, cacheablePaths = PRECACHE_URLS) {
   return cacheablePaths.includes(pathname);
 }
 
+function isExactBuildOwnedRequest(pathname, search, cacheablePaths = PRECACHE_URLS) {
+  return search === '' && isCacheablePath(pathname, cacheablePaths);
+}
+
 function getCachedNavigationPath(pathname, cacheablePaths = PRECACHE_URLS) {
   if (!isPublicAppPath(pathname)) return null;
   if (pathname === APP_BASE_PATH || pathname === `${APP_BASE_PATH}/`) {
@@ -79,6 +83,38 @@ function isSafeNavigationPath(pathname, cacheablePaths = PRECACHE_URLS) {
   return getCachedNavigationPath(pathname, cacheablePaths) !== null;
 }
 
+function validatePrecacheUrls(urls, workerOrigin) {
+  if (!Array.isArray(urls)) throw new Error('Precache manifest must be an array.');
+
+  const seen = new Set();
+  return urls.map((value) => {
+    if (typeof value !== 'string' || seen.has(value)) {
+      throw new Error('Precache manifest contains an invalid or duplicate URL.');
+    }
+    seen.add(value);
+
+    const parsed = new URL(value, workerOrigin);
+    if (
+      parsed.origin !== workerOrigin ||
+      value !== parsed.pathname ||
+      !isExactBuildOwnedRequest(parsed.pathname, parsed.search, urls)
+    ) {
+      throw new Error(`Precache URL is outside the public build manifest: ${value}`);
+    }
+    return value;
+  });
+}
+
+function createPrecacheRequests(urls, workerOrigin) {
+  return validatePrecacheUrls(urls, workerOrigin).map(
+    (url) =>
+      new Request(new URL(url, workerOrigin), {
+        cache: 'reload',
+        credentials: 'same-origin',
+      }),
+  );
+}
+
 function isCacheableResponse(response) {
   const cacheControl = response.headers.get('cache-control') || '';
   return (
@@ -90,7 +126,13 @@ function isCacheableResponse(response) {
 
 if (typeof self !== 'undefined') {
   self.addEventListener('install', (event) => {
-    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
+    event.waitUntil(
+      caches
+        .open(CACHE_NAME)
+        .then((cache) =>
+          cache.addAll(createPrecacheRequests(PRECACHE_URLS, self.location.origin)),
+        ),
+    );
   });
 
   self.addEventListener('activate', (event) => {
@@ -115,17 +157,20 @@ if (typeof self !== 'undefined') {
 
     const requestUrl = new URL(event.request.url);
     if (!isSameOriginRequest(requestUrl.href, self.location.origin)) return;
-    const isBuildOwnedPath = isCacheablePath(requestUrl.pathname);
+    const isBuildOwnedRequest = isExactBuildOwnedRequest(
+      requestUrl.pathname,
+      requestUrl.search,
+    );
     const isSafeNavigation =
       event.request.mode === 'navigate' && isSafeNavigationPath(requestUrl.pathname);
-    if (!isBuildOwnedPath && !isSafeNavigation) return;
+    if (!isBuildOwnedRequest && !isSafeNavigation) return;
 
     event.respondWith(
       fetch(event.request)
         .then((response) => {
           // Only exact build-manifest paths may be written. Extensionless navigation
           // requests are handled for offline fallback but are never added to the cache.
-          if (isBuildOwnedPath && isCacheableResponse(response)) {
+          if (isBuildOwnedRequest && isCacheableResponse(response)) {
             const responseClone = response.clone();
             event.waitUntil(
               caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)),
@@ -166,9 +211,12 @@ if (typeof module !== 'undefined') {
     isOwnedCacheName,
     isCacheablePath,
     isCacheableResponse,
+    isExactBuildOwnedRequest,
+    createPrecacheRequests,
     getCachedNavigationPath,
     isPublicAppPath,
     isSafeNavigationPath,
     isSameOriginRequest,
+    validatePrecacheUrls,
   };
 }

@@ -4,9 +4,12 @@ const {
   isOwnedCacheName,
   isCacheablePath,
   isCacheableResponse,
+  isExactBuildOwnedRequest,
+  createPrecacheRequests,
   getCachedNavigationPath,
   isSafeNavigationPath,
   isSameOriginRequest,
+  validatePrecacheUrls,
 } = require('../public/sw');
 
 test('service worker owns only its versioned cache namespace', () => {
@@ -57,6 +60,22 @@ test('service-worker cache is limited to same-origin public requests', () => {
   assert.equal(isCacheablePath('/another-app/index.html', buildOwnedPaths), false);
   // Navigation aliases are deliberately not cache-write targets.
   assert.equal(isCacheablePath('/sda-church-app/home/give', buildOwnedPaths), false);
+  assert.equal(
+    isExactBuildOwnedRequest(
+      '/sda-church-app/data/latest-activity.json',
+      '',
+      buildOwnedPaths,
+    ),
+    true,
+  );
+  assert.equal(
+    isExactBuildOwnedRequest(
+      '/sda-church-app/data/latest-activity.json',
+      '?variant=private',
+      buildOwnedPaths,
+    ),
+    false,
+  );
 });
 
 test('safe extensionless navigations resolve only to cached public route documents', () => {
@@ -91,6 +110,39 @@ test('safe extensionless navigations resolve only to cached public route documen
   assert.equal(isSafeNavigationPath('/sda-church-app/admin/public', buildOwnedPaths), false);
   assert.equal(isSafeNavigationPath('/sda-church-app/home%2Fgive', buildOwnedPaths), false);
   assert.equal(isSafeNavigationPath('/another-app/home/give', buildOwnedPaths), false);
+});
+
+test('install validates every precache URL and reloads the immutable shell', () => {
+  const workerOrigin = 'https://example.test';
+  const publicManifest = [
+    '/sda-church-app/',
+    '/sda-church-app/index.html',
+    '/sda-church-app/home/give.html',
+  ];
+  assert.deepEqual(validatePrecacheUrls(publicManifest, workerOrigin), publicManifest);
+
+  const requests = createPrecacheRequests(publicManifest, workerOrigin);
+  assert.deepEqual(
+    requests.map(({ cache, credentials, url }) => ({ cache, credentials, url })),
+    publicManifest.map((url) => ({
+      cache: 'reload',
+      credentials: 'same-origin',
+      url: `${workerOrigin}${url}`,
+    })),
+  );
+
+  for (const invalidManifest of [
+    [...publicManifest, '/sda-church-app/admin/private.html'],
+    [...publicManifest, '/sda-church-app/index.html?token=private'],
+    [...publicManifest, 'https://another.test/sda-church-app/index.html'],
+    [...publicManifest, '/sda-church-app/home%2Fgive.html'],
+    [...publicManifest, '/sda-church-app/index.html'],
+  ]) {
+    assert.throws(
+      () => validatePrecacheUrls(invalidManifest, workerOrigin),
+      /invalid or duplicate|outside the public build manifest/,
+    );
+  }
 });
 
 test('service-worker cache respects response privacy directives', () => {

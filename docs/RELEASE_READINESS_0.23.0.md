@@ -115,7 +115,7 @@ the release owner chooses one.
 
 | Finalization field | Value |
 | --- | --- |
-| Validated implementation commit before evidence-only documentation | `034c0cb0457f728a00113ae8c8965007905d784f` |
+| Validated implementation commit before evidence-only documentation | `231b19a70129f5e5fcbd8c06f67ee03a602d0e79` |
 | Clean `npm ci` | Passed on Windows; 745 packages installed and 746 audited from the committed lockfile |
 | Complete `npm run check` | Passed: contracts, Expo Doctor, TypeScript, Node tests, and production web export |
 | Node test count | 126 passed, 0 failed, 0 skipped |

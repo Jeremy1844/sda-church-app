@@ -32,6 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import * as SearchTerms from '@/constants/SearchTerms';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
 import { getAdjacentChapter } from '@/services/BibleNavigation';
@@ -41,8 +42,8 @@ import {
 } from '@/services/BibleRequestIntegrity';
 import { createVerseRenderPlan } from '@/services/BibleRendering';
 import { helloAoBibleRepository } from '@/services/BibleRepository';
-import { NavigationStyles } from '@/styles/NavigationStyles';
-import { ReaderStyles } from '@/styles/ReaderStyles';
+import { createNavigationStyles } from '@/styles/NavigationStyles';
+import { createReaderStyles } from '@/styles/ReaderStyles';
 
 // Generalizing dimensions to ensure responsiveness across iPhone/Tablet
 const DOCK_HEIGHT = 60;
@@ -133,6 +134,9 @@ const uiLabels = {
 
 export default function BibleScreen() {
   const theme = useAppTheme();
+  const { textScale } = useTextSize();
+  const NavigationStyles = createNavigationStyles(textScale);
+  const ReaderStyles = createReaderStyles(textScale);
   const insets = useSafeAreaInsets();
   const outboundShare = useOutboundShare();
   const { fontScale } = useWindowDimensions();

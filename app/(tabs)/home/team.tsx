@@ -5,9 +5,11 @@ import {
   openEmail,
   openPhone,
 } from '@/constants/ExternalLinks';
+import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
 import { TEAM_MEMBERS } from '@/constants/TeamData';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -18,6 +20,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MeetOurTeamScreen() {
   const { language } = useContext(LanguageContext);
+  const { textScale } = useTextSize();
+  const styles = createStyles(textScale);
   const { backTo } = useLocalSearchParams();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -191,7 +195,7 @@ export default function MeetOurTeamScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (textScale: TextScale) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -206,8 +210,8 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontWeight: 'bold',
-    fontSize: 28,
-    lineHeight: 36,
+    fontSize: scaleTypographyMetric(28, textScale),
+    lineHeight: scaleTypographyMetric(36, textScale),
     marginBottom: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
@@ -220,8 +224,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   heroDescription: {
-    lineHeight: 22,
-    fontSize: 15,
+    lineHeight: scaleTypographyMetric(22, textScale),
+    fontSize: scaleTypographyMetric(15, textScale),
   },
   body: {
     padding: 16,
@@ -239,15 +243,17 @@ const styles = StyleSheet.create({
   },
   cardSectionTitle: {
     fontWeight: 'bold',
-    fontSize: 20,
+    fontSize: scaleTypographyMetric(20, textScale),
+    lineHeight: scaleTypographyMetric(28, textScale),
     marginBottom: 4,
   },
   roleSubtitle: {
-    fontSize: 14,
+    fontSize: scaleTypographyMetric(14, textScale),
+    lineHeight: scaleTypographyMetric(20, textScale),
   },
   cardDescription: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: scaleTypographyMetric(15, textScale),
+    lineHeight: scaleTypographyMetric(22, textScale),
   },
   actionsRow: {
     justifyContent: 'space-between',
@@ -263,7 +269,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionHeading: {
-    fontSize: 22,
+    fontSize: scaleTypographyMetric(22, textScale),
+    lineHeight: scaleTypographyMetric(30, textScale),
     fontWeight: 'bold',
   },
   headingDivider: {

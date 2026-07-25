@@ -6,6 +6,7 @@ import { Divider, Text, TouchableRipple } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getSortedHymns, HydratedHymn, openHymnal } from '@/constants/EnglishHymnal';
+import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { openYouTubeSearch } from '@/constants/ExternalLinks';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
@@ -63,6 +64,7 @@ let lastProcessedRefresh = '';
 export default function HymnalScreen() {
   const { textScale } = useTextSize();
   const NavigationStyles = createNavigationStyles(textScale);
+  const styles = createStyles(textScale);
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const { language } = useContext(LanguageContext);
@@ -266,7 +268,7 @@ export default function HymnalScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (textScale: TextScale) => StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingBottom: 12,
@@ -293,11 +295,13 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: scaleTypographyMetric(18, textScale),
+    lineHeight: scaleTypographyMetric(25, textScale),
     fontWeight: '700',
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: scaleTypographyMetric(14, textScale),
+    lineHeight: scaleTypographyMetric(20, textScale),
     marginTop: 2,
   },
   bottomSection: {
@@ -317,7 +321,8 @@ const styles = StyleSheet.create({
   buttonText: {
     marginLeft: 8,
     fontWeight: '600',
-    fontSize: 15,
+    fontSize: scaleTypographyMetric(15, textScale),
+    lineHeight: scaleTypographyMetric(21, textScale),
   },
   verticalDivider: {
     width: 1,
@@ -331,7 +336,8 @@ const styles = StyleSheet.create({
     minHeight: 0,
     paddingBottom: 0,
     paddingTop: 0,
-    fontSize: 16,
+    fontSize: scaleTypographyMetric(16, textScale),
+    lineHeight: scaleTypographyMetric(22, textScale),
   },
   legalNotice: {
     marginTop: 10,

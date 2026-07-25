@@ -11,6 +11,7 @@ import {
   openURL,
   openSabbathStream,
 } from '@/constants/ExternalLinks';
+import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { LanguageContext, SupportedLanguage } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
@@ -55,6 +56,7 @@ export default function HomeScreen() {
   const { language } = useContext(LanguageContext);
   const { textScale } = useTextSize();
   const NavigationStyles = createNavigationStyles(textScale);
+  const styles = createStyles(textScale);
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
   const outboundShare = useOutboundShare();
@@ -793,7 +795,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (textScale: TextScale) => StyleSheet.create({
   hero: { padding: 24, alignItems: 'center', justifyContent: 'center' },
   welcomeText: {
     fontWeight: 'bold',
@@ -831,7 +833,8 @@ const styles = StyleSheet.create({
   timerValueSubtle: {
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontVariant: ['tabular-nums'],
-    fontSize: 16,
+    fontSize: scaleTypographyMetric(16, textScale),
+    lineHeight: scaleTypographyMetric(22, textScale),
     fontWeight: '700',
   },
   grid: {

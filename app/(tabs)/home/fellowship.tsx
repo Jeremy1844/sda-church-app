@@ -1,4 +1,5 @@
 import { MenuCard } from '@/components/MenuCard';
+import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import {
   CHURCH_EMAIL,
   CHURCH_PHONE,
@@ -12,6 +13,7 @@ import {
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
 import { ROUTES } from '@/constants/Routes';
+import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
@@ -183,6 +185,8 @@ const allLabels = {
 };
 
 export default function FellowshipsAndFoodScreen() {
+  const { textScale } = useTextSize();
+  const styles = createStyles(textScale);
   const theme = useAppTheme();
   const { language } = useContext(LanguageContext);
   const { backTo } = useLocalSearchParams();
@@ -474,7 +478,7 @@ export default function FellowshipsAndFoodScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (textScale: TextScale) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -489,8 +493,8 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontWeight: 'bold',
-    fontSize: 28,
-    lineHeight: 36,
+    fontSize: scaleTypographyMetric(28, textScale),
+    lineHeight: scaleTypographyMetric(36, textScale),
     marginBottom: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.4)',
     textShadowOffset: { width: 0, height: 1 },
@@ -504,14 +508,15 @@ const styles = StyleSheet.create({
   },
   heroQuote: {
     fontStyle: 'italic',
-    lineHeight: 20,
-    fontSize: 14,
+    lineHeight: scaleTypographyMetric(20, textScale),
+    fontSize: scaleTypographyMetric(14, textScale),
   },
   heroRef: {
     textAlign: 'right',
     marginTop: 6,
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: scaleTypographyMetric(12, textScale),
+    lineHeight: scaleTypographyMetric(17, textScale),
   },
   body: {
     padding: 16,
@@ -529,12 +534,13 @@ const styles = StyleSheet.create({
   },
   cardSectionTitle: {
     fontWeight: 'bold',
-    fontSize: 20,
+    fontSize: scaleTypographyMetric(20, textScale),
+    lineHeight: scaleTypographyMetric(28, textScale),
     marginBottom: 8,
   },
   cardDescription: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: scaleTypographyMetric(15, textScale),
+    lineHeight: scaleTypographyMetric(22, textScale),
   },
   verseCard: {
     borderLeftWidth: 4,
@@ -544,7 +550,7 @@ const styles = StyleSheet.create({
   },
   verseText: {
     fontStyle: 'italic',
-    lineHeight: 20,
+    lineHeight: scaleTypographyMetric(20, textScale),
   },
   verseRef: {
     textAlign: 'right',
@@ -553,11 +559,12 @@ const styles = StyleSheet.create({
   },
   listItemTitle: {
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: scaleTypographyMetric(15, textScale),
+    lineHeight: scaleTypographyMetric(21, textScale),
   },
   listItemDesc: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: scaleTypographyMetric(13, textScale),
+    lineHeight: scaleTypographyMetric(18, textScale),
     marginTop: 2,
   },
   listItemDivider: {
@@ -573,13 +580,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   descriptionButtonLabel: {
-    fontSize: 14,
+    fontSize: scaleTypographyMetric(14, textScale),
+    lineHeight: scaleTypographyMetric(20, textScale),
     fontWeight: 'bold',
   },
   outreachText: {
-    fontSize: 15,
+    fontSize: scaleTypographyMetric(15, textScale),
     fontStyle: 'italic',
-    lineHeight: 22,
+    lineHeight: scaleTypographyMetric(22, textScale),
     marginTop: 16,
     fontWeight: '500',
     textAlign: 'center',
@@ -604,7 +612,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionHeading: {
-    fontSize: 22,
+    fontSize: scaleTypographyMetric(22, textScale),
+    lineHeight: scaleTypographyMetric(30, textScale),
     fontWeight: 'bold',
   },
   heroImage: { height: 250, width: '100%' },

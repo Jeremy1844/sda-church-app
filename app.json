@@ -40,7 +40,16 @@
     "plugins": [
       "expo-router",
       "expo-localization",
-      "./withAndroidSDKOverride"
+      "./withAndroidSDKOverride",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundRecording": false,
+          "enableBackgroundPlayback": true
+        }
+      ]
     ]
   }
 }

@@ -4,7 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { checkVersions, syncVersions } = require('./sync-version');
+const { checkVersions, syncVersions } = require('../public/sync-version');
 
 const CURRENT_VERSION = '1.2.3';
 

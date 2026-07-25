@@ -1,7 +1,7 @@
 import { UIStateContext } from '@/components/GlobalHeader';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext, useEffect, useRef, useState } from 'react';
 import {
@@ -392,23 +392,29 @@ export default function BibleScreen() {
   );
 
   // Audio playback state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const audioPlayer = useAudioPlayer(null);
+  const audioStatus = useAudioPlayerStatus(audioPlayer);
+  const loadedAudioUrl = useRef<string | null>(null);
+  const handledFinishedAudioUrl = useRef<string | null>(null);
+  const isPlaying = audioStatus.playing;
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
-  /**
-   * Handles automatic audio transition when a track finishes.
-   */
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded && status.didJustFinish) {
-      setIsPlaying(false);
+  useEffect(() => {
+    const finishedAudioUrl = loadedAudioUrl.current;
+    if (
+      audioStatus.isLoaded &&
+      audioStatus.didJustFinish &&
+      finishedAudioUrl &&
+      handledFinishedAudioUrl.current !== finishedAudioUrl
+    ) {
+      handledFinishedAudioUrl.current = finishedAudioUrl;
       if (!isLastChapter) {
         // Signal that the next chapter should start playing automatically
         setShouldAutoPlay(true);
         navigateToChapter('next');
       }
     }
-  };
+  }, [audioStatus.didJustFinish, audioStatus.isLoaded, isLastChapter]);
 
   const toggleAudio = async () => {
     const audioLinks = chapterData?.thisChapterAudioLinks;
@@ -419,20 +425,14 @@ export default function BibleScreen() {
 
     try {
       if (isPlaying) {
-        await soundRef.current?.pauseAsync();
-        setIsPlaying(false);
+        audioPlayer.pause();
       } else {
-        if (!soundRef.current) {
-          const { sound } = await Audio.Sound.createAsync(
-            { uri: audioUrl as string },
-            { shouldPlay: true },
-          );
-          soundRef.current = sound;
-          sound.setOnPlaybackStatusUpdate(onPlaybackStatusUpdate);
-        } else {
-          await soundRef.current.playAsync();
+        if (loadedAudioUrl.current !== audioUrl) {
+          audioPlayer.replace(audioUrl as string);
+          loadedAudioUrl.current = audioUrl as string;
+          handledFinishedAudioUrl.current = null;
         }
-        setIsPlaying(true);
+        audioPlayer.play();
       }
     } catch (e) {
       console.error('Audio playback error:', e);
@@ -700,12 +700,13 @@ export default function BibleScreen() {
       }
     }
 
-    // Stop and unload audio when the chapter changes or the component unmounts
+    // Stop and release the current source when the chapter changes. The hook owns and
+    // releases the player itself when the reader unmounts.
     return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-        soundRef.current = null;
-        setIsPlaying(false);
+      if (loadedAudioUrl.current) {
+        audioPlayer.pause();
+        audioPlayer.replace(null);
+        loadedAudioUrl.current = null;
       }
       // Always restore menus when leaving the reader
       updateMenuVisibility(true);

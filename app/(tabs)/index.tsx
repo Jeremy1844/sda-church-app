@@ -1,5 +1,9 @@
 import { GridMenuCard } from '@/components/GridMenuCard';
 import {
+  OutboundShareFeedback,
+  useOutboundShare,
+} from '@/components/OutboundShareFeedback';
+import {
   CHURCH_BUILDING_IMAGE_URL,
   CHURCH_LATITUDE,
   CHURCH_LONGITUDE,
@@ -31,7 +35,6 @@ import {
   ImageBackground,
   Platform,
   ScrollView,
-  Share,
   StyleSheet,
   View,
 } from 'react-native';
@@ -49,6 +52,7 @@ export default function HomeScreen() {
   const { language } = useContext(LanguageContext);
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const outboundShare = useOutboundShare();
 
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
 
@@ -465,23 +469,7 @@ export default function HomeScreen() {
       BibleService.SUPPORTED_TRANSLATIONS.find((t) => t.id === transId)?.name || transId;
     const message = `${randomVerse.text}\n\n— ${randomVerse.reference} (${translation})`;
 
-    try {
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        await (navigator as any).share({
-          title: randomVerse.reference,
-          text: message,
-        });
-      } else {
-        await Share.share({
-          message,
-          title: randomVerse.reference,
-        });
-      }
-    } catch (e) {
-      if ((e as any).name !== 'AbortError') {
-        console.error('Sharing failed', e);
-      }
-    }
+    await outboundShare.share({ title: randomVerse.reference, text: message });
   };
 
   const navigateToVerse = () => {
@@ -779,6 +767,11 @@ export default function HomeScreen() {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+      <OutboundShareFeedback
+        feedback={outboundShare.feedback}
+        language={language}
+        onDismiss={outboundShare.dismissFeedback}
+      />
     </>
   );
 }

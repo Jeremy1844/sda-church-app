@@ -1,4 +1,8 @@
 import { UIStateContext } from '@/components/GlobalHeader';
+import {
+  OutboundShareFeedback,
+  useOutboundShare,
+} from '@/components/OutboundShareFeedback';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
@@ -9,7 +13,6 @@ import {
   Animated,
   FlatList,
   ScrollView,
-  Share,
   StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
@@ -126,6 +129,7 @@ const uiLabels = {
 export default function BibleScreen() {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const outboundShare = useOutboundShare();
   const { fontScale } = useWindowDimensions();
   const dockBottomMargin = getBottomTabContentHeight(fontScale);
   const { language } = useContext(LanguageContext);
@@ -604,23 +608,9 @@ export default function BibleScreen() {
     const translation = supportedTranslation.name;
     const message = `"${fullText}"\n\n— ${reference} (${translation})`;
 
-    try {
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        await (navigator as any).share({
-          title: reference,
-          text: message,
-        });
-      } else {
-        await Share.share({
-          message: `${message}`,
-          title: reference,
-        });
-      }
-      if (isMultiSelect) clearSelection();
-    } catch (e) {
-      if ((e as any).name !== 'AbortError') {
-        console.error('Sharing failed', e);
-      }
+    const outcome = await outboundShare.share({ title: reference, text: message });
+    if (isMultiSelect && (outcome.kind === 'shared' || outcome.kind === 'copied')) {
+      clearSelection();
     }
   };
 
@@ -1511,6 +1501,11 @@ export default function BibleScreen() {
           </View>
         </Modal>
       </Portal>
+      <OutboundShareFeedback
+        feedback={outboundShare.feedback}
+        language={language}
+        onDismiss={outboundShare.dismissFeedback}
+      />
     </View>
   );
 }

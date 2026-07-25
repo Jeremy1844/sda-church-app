@@ -36,6 +36,9 @@ jobs:
       - name: Validate contracts
         run: npm run check:contracts
 
+      - name: Validate Expo dependencies and configuration
+        run: npm run doctor
+
       - name: Typecheck
         run: npm run typecheck
 

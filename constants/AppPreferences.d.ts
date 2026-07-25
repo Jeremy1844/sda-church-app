@@ -1,6 +1,30 @@
 export const TEXT_SCALE_STORAGE_KEY: 'user-text-scale';
+export const TEXT_SCALE_MIN: 1;
+export const TEXT_SCALE_MAX: 2;
+export const TEXT_SCALE_STEP: 0.05;
 export const TEXT_SCALE_OPTIONS: readonly [1, 1.25, 1.5];
-export type TextScale = (typeof TEXT_SCALE_OPTIONS)[number];
+export type TextScale =
+  | 1
+  | 1.05
+  | 1.1
+  | 1.15
+  | 1.2
+  | 1.25
+  | 1.3
+  | 1.35
+  | 1.4
+  | 1.45
+  | 1.5
+  | 1.55
+  | 1.6
+  | 1.65
+  | 1.7
+  | 1.75
+  | 1.8
+  | 1.85
+  | 1.9
+  | 1.95
+  | 2;
 export const DEFAULT_TEXT_SCALE: TextScale;
 
 export type PwaInstallStatus =

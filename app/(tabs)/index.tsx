@@ -64,9 +64,20 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
+  ViewStyle,
 } from 'react-native';
-import { Button, Card, Dialog, List, Portal, Text } from 'react-native-paper';
+import {
+  ActivityIndicator,
+  Button,
+  Card,
+  Dialog,
+  List,
+  Portal,
+  Text,
+  TouchableRipple,
+} from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ELMHURST_SUNSET_COORDINATES: SunsetCoordinates = Object.freeze({
@@ -232,13 +243,27 @@ export default function HomeScreen() {
     BibleService.DEFAULT_TRANSLATION_MAP[requestedLanguage] || 'BSB';
   const verseDateKey = getVerseOfDayDateKey(new Date());
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
-  const styles = createStyles(textScale);
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
+  const styles = createStyles(textScale);
   const outboundShare = useOutboundShare();
 
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
+  const effectiveTextScale = Math.max(1, fontScale * textScale);
+  const usableContentWidth = Math.max(0, Math.min(width, 960) - 40);
+  const usesTwoColumnGrid =
+    usableContentWidth >= 2 * 130 * effectiveTextScale + 8;
+  const stacksHeroActions =
+    usableContentWidth < 372 || effectiveTextScale > 1.25;
+  const usesConstrainedTimer = width < 480 || effectiveTextScale > 1.25;
+  const activityCoverHeight = width < 480 ? 170 : width < 768 ? 220 : 260;
+  const interactiveCursorStyle =
+    Platform.OS === 'web' ? ({ cursor: 'pointer' } as ViewStyle) : undefined;
 
   const allLabels = {
     en: {
@@ -384,6 +409,12 @@ export default function HomeScreen() {
   const [locationDisclosureVisible, setLocationDisclosureVisible] = useState(false);
   const [locationStatus, setLocationStatus] =
     useState<LocationRequestStatus>('default');
+  const locationCursorStyle =
+    Platform.OS === 'web'
+      ? ({
+          cursor: locationStatus === 'requesting' ? 'default' : 'pointer',
+        } as ViewStyle)
+      : undefined;
   const [sunsetState, setSunsetState] = useState<SunsetTimesState>(() => ({
     status: 'loading',
     requestId: 0,
@@ -827,7 +858,10 @@ export default function HomeScreen() {
       >
         <ImageBackground
           source={{ uri: CHURCH_BUILDING_IMAGE_URL }}
-          style={styles.hero}
+          style={[
+            styles.hero,
+            stacksHeroActions && styles.heroConstrained,
+          ]}
           resizeMode="cover"
         >
           <LinearGradient
@@ -867,20 +901,20 @@ export default function HomeScreen() {
                 : labels.subtitle}
           </Text>
           <View
-            style={{
-              flexDirection: 'row',
-              marginTop: 16,
-              gap: 12,
-              width: '100%',
-              paddingHorizontal: 16,
-            }}
+            style={[
+              styles.heroActions,
+              stacksHeroActions && styles.heroActionsStacked,
+            ]}
           >
             {displayedVerseLoadStatus === 'unavailable' && !displayedVerse ? (
               <Button
                 mode="contained"
                 icon="refresh"
                 onPress={() => setVerseRetryNonce((value) => value + 1)}
-                style={{ borderRadius: 20, flex: 1 }}
+                style={[
+                  styles.heroAction,
+                  stacksHeroActions && styles.heroActionStacked,
+                ]}
                 accessibilityLabel={labels.retry}
               >
                 {labels.retry}
@@ -892,7 +926,11 @@ export default function HomeScreen() {
                   icon="share-variant"
                   onPress={handleShare}
                   disabled={!displayedVerse}
-                  style={{ borderRadius: 20, flex: 1, borderColor: '#FFFFFF' }}
+                  style={[
+                    styles.heroAction,
+                    styles.shareAction,
+                    stacksHeroActions && styles.heroActionStacked,
+                  ]}
                   textColor="#FFFFFF"
                 >
                   {(labels as any).shareVerse}
@@ -902,7 +940,10 @@ export default function HomeScreen() {
                   icon="book-open-variant"
                   onPress={navigateToVerse}
                   disabled={!displayedVerse}
-                  style={{ borderRadius: 20, flex: 1 }}
+                  style={[
+                    styles.heroAction,
+                    stacksHeroActions && styles.heroActionStacked,
+                  ]}
                 >
                   {(labels as any).readVerse}
                 </Button>
@@ -912,11 +953,12 @@ export default function HomeScreen() {
         </ImageBackground>
 
         <List.Section style={NavigationStyles.contentContainer}>
-          <List.Subheader
-            style={[NavigationStyles.subheader, { color: theme.colors.onBackground }]}
+          <Text
+            variant="titleLarge"
+            style={[styles.sectionHeading, { color: theme.colors.onBackground }]}
           >
             {labels.thisWeek}
-          </List.Subheader>
+          </Text>
 
           {/* Sabbath Countdown Widget */}
           <Card
@@ -924,12 +966,17 @@ export default function HomeScreen() {
             mode="outlined"
           >
             <Card.Content style={styles.timerContentSubtle}>
-              <View style={styles.timerRow}>
+              <View
+                style={[
+                  styles.timerRow,
+                  usesConstrainedTimer && styles.timerRowConstrained,
+                ]}
+              >
                 <MaterialCommunityIcons
                   name="sun-clock-outline"
                   size={DESIGN_TOKENS.ICON_SIZE_FEATURED}
                   color={theme.colors.tertiary}
-                  style={{ marginRight: 12 }}
+                  style={styles.timerIcon}
                 />
                 <View style={styles.labelColumn}>
                   <Text
@@ -955,7 +1002,7 @@ export default function HomeScreen() {
                   )}
                   <Text
                     variant="labelSmall"
-                    style={{ color: theme.colors.onSurfaceVariant, opacity: 0.6 }}
+                    style={{ color: theme.colors.onSurfaceVariant }}
                   >
                     {selectedSunsetLocation.source === 'device'
                       ? labels.locationLocal
@@ -968,35 +1015,69 @@ export default function HomeScreen() {
                   variant="bodyLarge"
                   style={[
                     styles.timerValueSubtle,
+                    usesConstrainedTimer && styles.timerValueConstrained,
                     { color: theme.colors.onSurfaceVariant },
                   ]}
                 >
                   {sunsetCountdownReady ? countdown : '—'}
                 </Text>
               </View>
-              <View style={styles.locationControls}>
-                <Button
-                  mode="text"
-                  compact
-                  icon={useGps ? 'map-marker-off-outline' : 'crosshairs-gps'}
-                  loading={locationStatus === 'requesting'}
+              <View
+                style={[
+                  styles.locationControls,
+                  usesConstrainedTimer && styles.locationControlsConstrained,
+                ]}
+              >
+                <TouchableRipple
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    useGps
+                      ? SUNSET_LOCATION_PRIVACY_COPY.resetAction
+                      : locationStatus === 'unavailable'
+                        ? SUNSET_LOCATION_PRIVACY_COPY.retryAction
+                        : SUNSET_LOCATION_PRIVACY_COPY.action
+                  }
+                  accessibilityState={{
+                    disabled: locationStatus === 'requesting',
+                  }}
                   disabled={locationStatus === 'requesting'}
                   onPress={
                     useGps
                       ? useElmhurstLocation
                       : () => setLocationDisclosureVisible(true)
                   }
+                  style={[styles.locationControl, locationCursorStyle]}
                 >
-                  {useGps
-                    ? SUNSET_LOCATION_PRIVACY_COPY.resetAction
-                    : locationStatus === 'unavailable'
-                      ? SUNSET_LOCATION_PRIVACY_COPY.retryAction
-                      : SUNSET_LOCATION_PRIVACY_COPY.action}
-                </Button>
-                <Button
-                  mode="text"
-                  compact
-                  icon="open-in-new"
+                  <View pointerEvents="none" style={styles.locationControlContent}>
+                    {locationStatus === 'requesting' ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.colors.primary}
+                      />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name={useGps ? 'map-marker-off-outline' : 'crosshairs-gps'}
+                        size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
+                        color={theme.colors.primary}
+                      />
+                    )}
+                    <Text
+                      variant="labelLarge"
+                      style={[
+                        styles.locationControlText,
+                        { color: theme.colors.primary },
+                      ]}
+                    >
+                      {useGps
+                        ? SUNSET_LOCATION_PRIVACY_COPY.resetAction
+                        : locationStatus === 'unavailable'
+                          ? SUNSET_LOCATION_PRIVACY_COPY.retryAction
+                          : SUNSET_LOCATION_PRIVACY_COPY.action}
+                    </Text>
+                  </View>
+                </TouchableRipple>
+                <TouchableRipple
+                  accessibilityRole="link"
                   accessibilityLabel="Sunset data provider: Sunrise-Sunset.org"
                   onPress={() =>
                     openURL(
@@ -1005,9 +1086,25 @@ export default function HomeScreen() {
                       'Could not open Sunrise-Sunset.org.',
                     )
                   }
+                  style={[styles.locationControl, interactiveCursorStyle]}
                 >
-                  Data: Sunrise-Sunset.org
-                </Button>
+                  <View pointerEvents="none" style={styles.locationControlContent}>
+                    <MaterialCommunityIcons
+                      name="open-in-new"
+                      size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
+                      color={theme.colors.primary}
+                    />
+                    <Text
+                      variant="labelLarge"
+                      style={[
+                        styles.locationControlText,
+                        { color: theme.colors.primary },
+                      ]}
+                    >
+                      Data: Sunrise-Sunset.org
+                    </Text>
+                  </View>
+                </TouchableRipple>
                 {locationStatus === 'requesting' && (
                   <Text
                     variant="labelSmall"
@@ -1046,7 +1143,10 @@ export default function HomeScreen() {
               color={theme.colors.cardBgColors.livestream}
               iconColor={theme.colors.iconColors.livestream}
               onPress={openSabbathStream}
-              style={styles.gridCell}
+              style={[
+                styles.gridCell,
+                usesTwoColumnGrid ? styles.gridCellTwo : styles.gridCellSingle,
+              ]}
             />
             <GridMenuCard
               title={labels.bulletin}
@@ -1059,7 +1159,10 @@ export default function HomeScreen() {
                   params: { backTo: ROUTES.home },
                 } as any)
               }
-              style={styles.gridCell}
+              style={[
+                styles.gridCell,
+                usesTwoColumnGrid ? styles.gridCellTwo : styles.gridCellSingle,
+              ]}
             />
             <GridMenuCard
               title={labels.give}
@@ -1072,7 +1175,10 @@ export default function HomeScreen() {
                   params: { backTo: ROUTES.home },
                 } as any)
               }
-              style={styles.gridCell}
+              style={[
+                styles.gridCell,
+                usesTwoColumnGrid ? styles.gridCellTwo : styles.gridCellSingle,
+              ]}
             />
             <GridMenuCard
               title={labels.prayer}
@@ -1085,7 +1191,10 @@ export default function HomeScreen() {
                   params: { backTo: ROUTES.home },
                 } as any)
               }
-              style={styles.gridCell}
+              style={[
+                styles.gridCell,
+                usesTwoColumnGrid ? styles.gridCellTwo : styles.gridCellSingle,
+              ]}
             />
             <GridMenuCard
               title={labels.events}
@@ -1098,7 +1207,10 @@ export default function HomeScreen() {
                   params: { backTo: ROUTES.home },
                 } as any)
               }
-              style={styles.gridCell}
+              style={[
+                styles.gridCell,
+                usesTwoColumnGrid ? styles.gridCellTwo : styles.gridCellSingle,
+              ]}
             />
             <GridMenuCard
               title={labels.discover}
@@ -1111,13 +1223,15 @@ export default function HomeScreen() {
                   params: { backTo: ROUTES.home },
                 } as any)
               }
-              style={styles.gridCell}
+              style={[
+                styles.gridCell,
+                usesTwoColumnGrid ? styles.gridCellTwo : styles.gridCellSingle,
+              ]}
             />
           </View>
 
           {latestActivity && (
-            <Card
-              mode="outlined"
+            <TouchableRipple
               onPress={() =>
                 openURL(
                   latestActivity.url,
@@ -1125,28 +1239,42 @@ export default function HomeScreen() {
                   'Could not open the latest YouTube activity.',
                 )
               }
+              accessibilityRole="link"
               accessibilityLabel={`Open on YouTube: ${latestActivity.title}`}
-              style={styles.activityCard}
+              style={[styles.activityCard, interactiveCursorStyle]}
             >
-              <Card.Cover
-                source={require('../../assets/images/youtube_art.png')}
-                accessibilityLabel={latestActivity.title}
-              />
-              <Card.Content style={styles.activityContent}>
-                <MaterialCommunityIcons
-                  name="youtube"
-                  size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
-                  color={theme.colors.iconColors.livestream}
-                />
-                <Text
-                  variant="titleMedium"
-                  numberOfLines={2}
-                  style={[styles.activityTitle, { color: theme.colors.onSurface }]}
+              <Card
+                mode="outlined"
+                pointerEvents="none"
+                style={styles.activityCardSurface}
+              >
+                <View
+                  pointerEvents="none"
+                  accessible={false}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
                 >
-                  {latestActivity.title}
-                </Text>
-              </Card.Content>
-            </Card>
+                  <Card.Cover
+                    source={require('../../assets/images/youtube_art.png')}
+                    style={{ height: activityCoverHeight }}
+                  />
+                  <Card.Content style={styles.activityContent}>
+                    <MaterialCommunityIcons
+                      name="youtube"
+                      size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
+                      color={theme.colors.iconColors.livestream}
+                    />
+                    <Text
+                      variant="titleMedium"
+                      numberOfLines={2}
+                      style={[styles.activityTitle, { color: theme.colors.onSurface }]}
+                    >
+                      {latestActivity.title}
+                    </Text>
+                  </Card.Content>
+                </View>
+              </Card>
+            </TouchableRipple>
           )}
         </List.Section>
       </ScrollView>
@@ -1154,23 +1282,26 @@ export default function HomeScreen() {
         <Dialog
           visible={locationDisclosureVisible}
           onDismiss={() => setLocationDisclosureVisible(false)}
+          style={styles.dialog}
         >
           <Dialog.Icon icon="map-marker-radius-outline" />
           <Dialog.Title>{SUNSET_LOCATION_PRIVACY_COPY.title}</Dialog.Title>
-          <Dialog.Content>
-            {language !== 'en' && (
-              <Text
-                variant="labelMedium"
-                style={[styles.englishOnlyNotice, { color: theme.colors.primary }]}
-              >
-                {SUNSET_LOCATION_PRIVACY_COPY.englishOnlyNotice}
+          <Dialog.ScrollArea>
+            <ScrollView contentContainerStyle={styles.dialogScrollContent}>
+              {language !== 'en' && (
+                <Text
+                  variant="labelMedium"
+                  style={[styles.englishOnlyNotice, { color: theme.colors.primary }]}
+                >
+                  {SUNSET_LOCATION_PRIVACY_COPY.englishOnlyNotice}
+                </Text>
+              )}
+              <Text variant="bodyMedium">
+                {SUNSET_LOCATION_PRIVACY_COPY.disclosure}
               </Text>
-            )}
-            <Text variant="bodyMedium">
-              {SUNSET_LOCATION_PRIVACY_COPY.disclosure}
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions style={styles.dialogActions}>
             <Button onPress={() => setLocationDisclosureVisible(false)}>
               {SUNSET_LOCATION_PRIVACY_COPY.keepDefaultAction}
             </Button>
@@ -1190,7 +1321,42 @@ export default function HomeScreen() {
 }
 
 const createStyles = (textScale: TextScale) => StyleSheet.create({
-  hero: { padding: 24, alignItems: 'center', justifyContent: 'center' },
+  hero: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 960,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroConstrained: {
+    paddingHorizontal: 16,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    marginTop: 16,
+    gap: 12,
+    width: '100%',
+    paddingHorizontal: 16,
+  },
+  heroActionsStacked: {
+    flexDirection: 'column',
+    paddingHorizontal: 0,
+  },
+  heroAction: {
+    borderRadius: 20,
+    flexBasis: 0,
+    flexGrow: 1,
+  },
+  heroActionStacked: {
+    flexBasis: 'auto',
+    flexGrow: 0,
+    flexShrink: 0,
+    width: '100%',
+  },
+  shareAction: {
+    borderColor: '#FFFFFF',
+  },
   welcomeText: {
     fontWeight: 'bold',
     textAlign: 'center',
@@ -1211,6 +1377,13 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  timerRowConstrained: {
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+  },
+  timerIcon: {
+    marginRight: 12,
+  },
   labelColumn: {
     flex: 1,
   },
@@ -1219,6 +1392,27 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
     gap: 4,
     marginLeft: DESIGN_TOKENS.ICON_SIZE_FEATURED + 12,
     marginTop: 8,
+  },
+  locationControlsConstrained: {
+    marginLeft: 0,
+    width: '100%',
+  },
+  locationControl: {
+    alignSelf: 'stretch',
+    borderRadius: 24,
+    maxWidth: '100%',
+  },
+  locationControlContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  locationControlText: {
+    flex: 1,
+    flexShrink: 1,
   },
   englishOnlyNotice: {
     fontWeight: '700',
@@ -1231,6 +1425,15 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
     lineHeight: scaleTypographyMetric(22, textScale),
     fontWeight: '700',
   },
+  timerValueConstrained: {
+    width: '100%',
+    marginTop: 8,
+    textAlign: 'right',
+  },
+  sectionHeading: {
+    fontWeight: '700',
+    marginBottom: 12,
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1239,14 +1442,24 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
     borderRadius: 0,
   },
   gridCell: {
-    flexBasis: '47.5%',
     flexGrow: 1,
+    minWidth: 0,
+  },
+  gridCellTwo: {
+    flexBasis: '48%',
+  },
+  gridCellSingle: {
+    flexBasis: '100%',
   },
   activityCard: {
-    flexBasis: '100%',
     width: '100%',
     borderRadius: 12,
     overflow: 'hidden',
+    marginTop: 8,
+  },
+  activityCardSurface: {
+    width: '100%',
+    borderRadius: 12,
   },
   activityContent: {
     flexDirection: 'row',
@@ -1256,5 +1469,18 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
   },
   activityTitle: {
     flex: 1,
+  },
+  dialog: {
+    alignSelf: 'center',
+    width: '90%',
+    maxWidth: 560,
+    maxHeight: '90%',
+  },
+  dialogActions: {
+    flexWrap: 'wrap',
+  },
+  dialogScrollContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
   },
 });

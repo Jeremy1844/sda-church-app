@@ -11,13 +11,13 @@ import {
   openZoomClass,
 } from '@/constants/ExternalLinks';
 import { LanguageContext } from '@/constants/LanguageContext';
-import { DESIGN_TOKENS } from '@/constants/Layout';
+import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import { ROUTES } from '@/constants/Routes';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Button, Card, Divider, List, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -184,16 +184,31 @@ const allLabels = {
   },
 };
 
+const compactContactLabels = {
+  en: { email: 'Email', call: 'Call' },
+  zh: { email: '電郵', call: '電話' },
+  'zh-cn': { email: '邮件', call: '电话' },
+  es: { email: 'Correo', call: 'Llamar' },
+} as const;
+
 export default function FellowshipsAndFoodScreen() {
   const { textScale } = useTextSize();
-  const styles = createStyles(textScale);
   const theme = useAppTheme();
   const { language } = useContext(LanguageContext);
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const { width, fontScale } = useWindowDimensions();
+  const effectiveTextScale = fontScale * textScale;
+  const constrainedActions = width < 600 || effectiveTextScale > 1.25;
+  const styles = createStyles(textScale, constrainedActions);
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
+  const bottomGutter =
+    getBottomTabContentHeight(effectiveTextScale) + insets.bottom + 24;
   
   const labels = allLabels[language as keyof typeof allLabels] || allLabels.en;
+  const compactContact =
+    compactContactLabels[language as keyof typeof compactContactLabels] ||
+    compactContactLabels.en;
 
   return (
     <>
@@ -201,7 +216,11 @@ export default function FellowshipsAndFoodScreen() {
       <ScrollView
         style={[styles.container, { backgroundColor: theme.colors.background }]}
         contentContainerStyle={{
-          paddingBottom: insets.bottom + 40,
+          alignSelf: 'center',
+          width: '100%',
+          maxWidth: 960,
+          paddingTop: headerHeight,
+          paddingBottom: bottomGutter,
         }}
       >
         {/* Hero Section Banner */}
@@ -255,22 +274,24 @@ export default function FellowshipsAndFoodScreen() {
             <Divider style={{ marginHorizontal: 16 }} />
             <Card.Actions style={styles.actionsRow}>
               <Button
+                accessibilityLabel={labels.emailUs}
                 icon="email-outline"
                 mode="contained"
                 onPress={() => openEmail(CHURCH_EMAIL)}
                 style={[styles.actionButton, { backgroundColor: theme.colors.tertiary }]}
                 labelStyle={{ color: theme.colors.onSecondary }}
               >
-                {labels.emailUs}
+                {constrainedActions ? compactContact.email : labels.emailUs}
               </Button>
               <Button
+                accessibilityLabel={labels.callUs}
                 icon="phone"
                 mode="outlined"
                 onPress={() => openPhone(CHURCH_PHONE)}
                 style={[styles.actionButton, { borderColor: theme.colors.tertiary }]}
                 textColor={theme.colors.tertiary}
               >
-                {labels.callUs}
+                {constrainedActions ? compactContact.call : labels.callUs}
               </Button>
             </Card.Actions>
           </Card>
@@ -280,7 +301,9 @@ export default function FellowshipsAndFoodScreen() {
             <Text variant="titleLarge" style={[styles.sectionHeading, { color: theme.colors.onBackground }]}>
               {labels.elmhurstHeader}
             </Text>
-            <Divider style={styles.headingDivider} />
+            <Divider
+              style={[styles.headingDivider, { backgroundColor: theme.colors.primary }]}
+            />
           </View>
 
           <Card style={[styles.sectionCard, { backgroundColor: theme.colors.surface }]} mode="outlined">
@@ -370,22 +393,24 @@ export default function FellowshipsAndFoodScreen() {
             <Divider style={{ marginHorizontal: 16 }} />
             <Card.Actions style={styles.actionsRow}>
               <Button
+                accessibilityLabel={labels.emailUs}
                 icon="email-outline"
                 mode="contained"
                 onPress={() => openEmail(CHURCH_EMAIL)}
                 style={[styles.actionButton, { backgroundColor: theme.colors.tertiary }]}
                 labelStyle={{ color: theme.colors.onSecondary }}
               >
-                {labels.emailUs}
+                {constrainedActions ? compactContact.email : labels.emailUs}
               </Button>
               <Button
+                accessibilityLabel={labels.callUs}
                 icon="phone"
                 mode="outlined"
                 onPress={() => openPhone(CHURCH_PHONE)}
                 style={[styles.actionButton, { borderColor: theme.colors.tertiary }]}
                 textColor={theme.colors.tertiary}
               >
-                {labels.callUs}
+                {constrainedActions ? compactContact.call : labels.callUs}
               </Button>
             </Card.Actions>
           </Card>
@@ -395,7 +420,9 @@ export default function FellowshipsAndFoodScreen() {
             <Text variant="titleLarge" style={[styles.sectionHeading, { color: theme.colors.onBackground }]}>
               {labels.flushingHeader}
             </Text>
-            <Divider style={styles.headingDivider} />
+            <Divider
+              style={[styles.headingDivider, { backgroundColor: theme.colors.primary }]}
+            />
           </View>
 
           <Card style={[styles.sectionCard, { backgroundColor: theme.colors.surface }]} mode="outlined">
@@ -458,22 +485,24 @@ export default function FellowshipsAndFoodScreen() {
             <Divider style={{ marginHorizontal: 16 }} />
             <Card.Actions style={styles.actionsRow}>
               <Button
+                accessibilityLabel={labels.emailUs}
                 icon="email-outline"
                 mode="contained"
                 onPress={() => openEmail(CHURCH_EMAIL)}
                 style={[styles.actionButton, { backgroundColor: theme.colors.tertiary }]}
                 labelStyle={{ color: theme.colors.onSecondary }}
               >
-                {labels.emailUs}
+                {constrainedActions ? compactContact.email : labels.emailUs}
               </Button>
               <Button
+                accessibilityLabel={labels.callUs}
                 icon="phone"
                 mode="outlined"
                 onPress={() => openPhone(CHURCH_PHONE)}
                 style={[styles.actionButton, { borderColor: theme.colors.tertiary }]}
                 textColor={theme.colors.tertiary}
               >
-                {labels.callUs}
+                {constrainedActions ? compactContact.call : labels.callUs}
               </Button>
             </Card.Actions>
           </Card>
@@ -484,7 +513,7 @@ export default function FellowshipsAndFoodScreen() {
   );
 }
 
-const createStyles = (textScale: TextScale) => StyleSheet.create({
+const createStyles = (textScale: TextScale, constrainedActions: boolean) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -605,12 +634,15 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
     marginTop: 8,
   },
   actionsRow: {
+    flexDirection: constrainedActions ? 'column' : 'row',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
     padding: 12,
     gap: 12,
   },
   actionButton: {
-    flex: 1,
+    flex: constrainedActions ? undefined : 1,
+    width: constrainedActions ? '100%' : undefined,
     borderRadius: 8,
   },
   sectionHeaderContainer: {
@@ -634,6 +666,5 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
     marginTop: 6,
     width: 60,
     borderRadius: 2,
-    backgroundColor: '#3EA6FF',
   },
 });

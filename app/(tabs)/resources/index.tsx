@@ -10,9 +10,10 @@ import { DESIGN_TOKENS } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router, Stack } from 'expo-router';
 import { useContext } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { List } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -101,12 +102,16 @@ const allLabels = {
 
 export default function ResourcesScreen() {
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
   const theme = useAppTheme();
   const { language } = useContext(LanguageContext);
   const labels = allLabels[language as keyof typeof allLabels] || allLabels.en;
 
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
 
   return (
@@ -151,8 +156,24 @@ export default function ResourcesScreen() {
             title={labels.library}
             description={labels.librarySub}
             icon="bookshelf"
-            iconColor={theme.colors.tertiary}
+            iconColor={theme.colors.onSurfaceVariant}
             rightIcon={null}
+            rightElement={() => (
+              <MaterialCommunityIcons
+                name="lock-outline"
+                size={24}
+                color={theme.colors.onSurfaceVariant}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              />
+            )}
+            style={[
+              styles.unavailableCard,
+              {
+                backgroundColor: theme.colors.surfaceVariant,
+                borderColor: theme.colors.outline,
+              },
+            ]}
           />
 
         </List.Section>
@@ -194,3 +215,9 @@ export default function ResourcesScreen() {
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  unavailableCard: {
+    borderStyle: 'dashed',
+  },
+});

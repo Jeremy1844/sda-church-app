@@ -1,5 +1,5 @@
-import { scaleTypographyMetric } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
+import { DESIGN_TOKENS } from '@/constants/Layout';
 import {
   ALL_SEARCH_LABELS,
   getSearchableItems,
@@ -15,9 +15,22 @@ import { useAppTheme } from '@/constants/Themes';
 import { MAX_SEARCH_QUERY_LENGTH } from '@/services/SearchQueryPolicy';
 import { router, useSegments } from 'expo-router';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  FlatList,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Appbar, List, Portal, Searchbar } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const COMPACT_HEADER_MAX_EFFECTIVE_SCALE = 1.25;
+const SEARCH_FONT_SIZE_BASE = 16;
+const SEARCH_LINE_HEIGHT_BASE = 20;
+
+const roundMetric = (value: number) => Math.round(value * 100) / 100;
 
 /**
  * Context to drive global UI visibility (Reader Mode).
@@ -44,6 +57,24 @@ export const GlobalHeader = (props: any) => {
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headerRef = useRef<View>(null);
   const insets = useSafeAreaInsets();
+  const { fontScale, height: windowHeight } = useWindowDimensions();
+
+  // Header chrome stays at the shared 64dp contract used by every downstream
+  // screen offset. The app and OS scales are both honored up to a bounded 125%
+  // compact-chrome ceiling so search/title text cannot overflow that contract.
+  const resolvedFontScale =
+    Number.isFinite(fontScale) && fontScale > 0 ? fontScale : 1;
+  const compactHeaderEffectiveScale = Math.min(
+    Math.max(1, resolvedFontScale * textScale),
+    COMPACT_HEADER_MAX_EFFECTIVE_SCALE,
+  );
+  // Text and TextInput apply the OS scale after their style. Express the capped
+  // effective scale as an app-side metric so the rendered result is predictable.
+  const compactHeaderAppScale =
+    compactHeaderEffectiveScale / resolvedFontScale;
+  const searchFieldHeight = roundMetric(
+    44 + SEARCH_FONT_SIZE_BASE * (compactHeaderEffectiveScale - 1),
+  );
 
   const { menuAnim } = useContext(UIStateContext);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -104,6 +135,10 @@ export const GlobalHeader = (props: any) => {
     route: getSearchRoute(item, searchQuery),
     subtitle: getSearchSubtitle(item, searchQuery, language),
   }));
+  const availableResultsHeight = Math.max(
+    80,
+    windowHeight - headerHeight - insets.bottom - 16,
+  );
 
   const handleSelectResult = (item: SearchableItem) => {
     const q = searchQuery.toLowerCase();
@@ -155,7 +190,14 @@ export const GlobalHeader = (props: any) => {
       <Appbar.Header
         ref={headerRef}
         statusBarHeight={0}
-        style={{ backgroundColor: 'transparent', elevation: 0, height: 64 }}
+        style={[
+          styles.headerRail,
+          {
+            backgroundColor: 'transparent',
+            elevation: 0,
+            height: DESIGN_TOKENS.HEADER_HEIGHT_BASE,
+          },
+        ]}
         onLayout={(e) => {
           const { height } = e.nativeEvent.layout;
           setHeaderHeight(height + insets.top);
@@ -181,7 +223,12 @@ export const GlobalHeader = (props: any) => {
         {isSubPage && !isBiblePage && !isHymnalPage ? (
           <Appbar.Content
             title={title}
-            titleStyle={{ color: theme.colors.onSurface, fontWeight: 'bold' }}
+            titleStyle={{
+              color: theme.colors.onSurface,
+              fontWeight: 'bold',
+              fontSize: roundMetric(20 * compactHeaderAppScale),
+              lineHeight: roundMetric(24 * compactHeaderAppScale),
+            }}
           />
         ) : (
           <View style={{ flex: 1 }}>
@@ -196,6 +243,7 @@ export const GlobalHeader = (props: any) => {
                 setIsSearching(true);
               }}
               blurOnSubmit={false}
+              allowFontScaling={true}
               returnKeyType="search"
               onSubmitEditing={() => {
                 if (results.length > 0) {
@@ -214,7 +262,7 @@ export const GlobalHeader = (props: any) => {
                 backgroundColor: theme.colors.surface,
                 elevation: 0,
                 borderRadius: 24,
-                height: 44 + scaleTypographyMetric(16, textScale) - 16,
+                height: searchFieldHeight,
                 marginRight: 12,
                 marginLeft: 12,
               }}
@@ -222,7 +270,12 @@ export const GlobalHeader = (props: any) => {
                 minHeight: 0,
                 paddingBottom: 0,
                 paddingTop: 0,
-                fontSize: scaleTypographyMetric(16, textScale),
+                fontSize: roundMetric(
+                  SEARCH_FONT_SIZE_BASE * compactHeaderAppScale,
+                ),
+                lineHeight: roundMetric(
+                  SEARCH_LINE_HEIGHT_BASE * compactHeaderAppScale,
+                ),
               }}
               iconColor={theme.colors.onSurfaceVariant}
               placeholderTextColor={theme.colors.onSurfaceVariant}
@@ -231,28 +284,55 @@ export const GlobalHeader = (props: any) => {
               <Portal>
                 <View
                   style={[
-                    styles.resultsOverlay,
+                    styles.resultsPlacement,
                     {
                       top: headerHeight,
-                      backgroundColor: theme.colors.background,
+                      bottom: insets.bottom,
                     },
                   ]}
+                  pointerEvents="box-none"
                 >
-                  {results.map((item, index) => (
-                    <List.Item
-                      key={index}
-                      title={item.title}
-                      description={item.subtitle}
-                      left={(p) => (
-                        <List.Icon
-                          {...p}
-                          icon={item.icon}
-                          color={theme.colors.tertiary}
+                  <View
+                    style={[
+                      styles.resultsOverlay,
+                      {
+                        maxHeight: availableResultsHeight,
+                        backgroundColor: theme.colors.background,
+                        borderColor: theme.colors.outlineVariant,
+                      },
+                    ]}
+                  >
+                    <FlatList
+                      data={results}
+                      keyExtractor={(item, index) =>
+                        `${item.route}:${item.title}:${index}`
+                      }
+                      keyboardDismissMode="none"
+                      keyboardShouldPersistTaps="always"
+                      initialNumToRender={12}
+                      maxToRenderPerBatch={16}
+                      windowSize={7}
+                      removeClippedSubviews={Platform.OS !== 'web'}
+                      onScrollBeginDrag={cancelBlurTimer}
+                      onTouchStart={cancelBlurTimer}
+                      renderItem={({ item }) => (
+                        <List.Item
+                          title={item.title}
+                          description={item.subtitle}
+                          titleNumberOfLines={2}
+                          descriptionNumberOfLines={3}
+                          left={(p) => (
+                            <List.Icon
+                              {...p}
+                              icon={item.icon}
+                              color={theme.colors.tertiary}
+                            />
+                          )}
+                          onPress={() => handleSelectResult(item)}
                         />
                       )}
-                      onPress={() => handleSelectResult(item)}
                     />
-                  ))}
+                  </View>
                 </View>
               </Portal>
             )}
@@ -271,13 +351,24 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 1000,
   },
-  resultsOverlay: {
+  headerRail: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 960,
+  },
+  resultsPlacement: {
     position: 'absolute',
     left: 0,
     right: 0,
-    marginHorizontal: 16,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  resultsOverlay: {
+    width: '100%',
+    maxWidth: 928,
     borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    marginTop: 8,
   },
 });

@@ -46,7 +46,6 @@ export const createReaderStyles = (textScale: TextScale) => StyleSheet.create({
     lineHeight: scaleTypographyMetric(18, textScale),
   },
   bibleScroll: { flex: 1 },
-  bibleContent: { padding: 20, paddingBottom: 80 },
   verseText: {
     fontSize: scaleTypographyMetric(19, textScale),
     lineHeight: scaleTypographyMetric(30, textScale),

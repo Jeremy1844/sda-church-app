@@ -1,7 +1,7 @@
 // This version string is synchronized from package.json by public/sync-version.js.
 // This controls a pop-up notification to users when a new version of the app is available for install
 // DO NOT EDIT THIS MANUALLY, as it is verified by the release quality gate.
-const VERSION = '0.23.0';
+const VERSION = '0.23.1';
 const CACHE_PREFIX = 'sda-church-v';
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const APP_BASE_PATH = '/sda-church-app';

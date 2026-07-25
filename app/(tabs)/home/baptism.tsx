@@ -7,13 +7,13 @@ import {
   TEN_COMMANDMENTS,
 } from '@/constants/DoctrineData';
 import { LanguageContext } from '@/constants/LanguageContext';
-import { DESIGN_TOKENS } from '@/constants/Layout';
+import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { createDocumentStyles } from '@/styles/DocumentStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { Card, List, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,7 +24,10 @@ export default function BaptismScreen() {
   const { backTo } = useLocalSearchParams();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
+  const bottomGutter =
+    getBottomTabContentHeight(fontScale * textScale) + insets.bottom + 24;
 
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -102,7 +105,7 @@ export default function BaptismScreen() {
         style={DocumentStyles.container}
         contentContainerStyle={{
           paddingTop: headerHeight,
-          paddingBottom: insets.bottom + 50,
+          paddingBottom: bottomGutter,
         }}
       >
         <View style={DocumentStyles.section}>

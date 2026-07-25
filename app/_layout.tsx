@@ -1,7 +1,9 @@
 import { InitialSetup } from '@/components/InitialSetup';
 import {
   DEFAULT_TEXT_SCALE,
+  isTextScale,
   isStandaloneMode,
+  normalizeTextScale,
   parseStoredTextScale,
   resolvePwaInstallStatus,
   serializeTextScale,
@@ -390,8 +392,15 @@ export default function RootLayout() {
   };
 
   const handleSetTextScale = async (nextScale: TextScale) => {
-    setTextScale(nextScale);
-    await AsyncStorage.setItem(TEXT_SCALE_STORAGE_KEY, serializeTextScale(nextScale));
+    if (!isTextScale(nextScale)) {
+      throw new TypeError('Unsupported text scale.');
+    }
+    const normalizedScale = normalizeTextScale(nextScale);
+    await AsyncStorage.setItem(
+      TEXT_SCALE_STORAGE_KEY,
+      serializeTextScale(normalizedScale),
+    );
+    setTextScale(normalizedScale);
   };
 
   const onCompleteSetup = async () => {

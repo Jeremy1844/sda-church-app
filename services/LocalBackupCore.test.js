@@ -7,7 +7,10 @@ const test = require('node:test');
 const {
   BACKUP_FORMAT,
   BACKUP_VERSION,
+  LEGACY_BACKUP_VERSION,
+  LEGACY_SUPPORTED_TEXT_SCALES,
   MAX_BACKUP_BYTES,
+  SUPPORTED_TEXT_SCALES,
   applyKeyValueTransaction,
   canonicalize,
   createBackupEnvelope,
@@ -23,6 +26,22 @@ const settings = {
   theme: 'dark',
   setupComplete: true,
   textScale: 1.25,
+};
+
+const createLegacyEnvelope = (legacySettings) => {
+  const content = {
+    format: BACKUP_FORMAT,
+    version: LEGACY_BACKUP_VERSION,
+    createdAt,
+    data: legacySettings,
+  };
+  return {
+    ...content,
+    integrity: {
+      algorithm: 'SHA-256',
+      digest: sha256(canonicalize(content)),
+    },
+  };
 };
 
 test('canonicalize sorts object keys recursively and preserves array order', () => {
@@ -68,8 +87,8 @@ test('rejects unsupported fields, versions, values, and prototype-like input', a
     /missing or unsupported fields/,
   );
   await assert.rejects(
-    validateBackupText(JSON.stringify({ ...envelope, version: 2 }), sha256),
-    /version 2 is unsupported/,
+    validateBackupText(JSON.stringify({ ...envelope, version: 3 }), sha256),
+    /version 3 is unsupported/,
   );
   await assert.rejects(
     validateBackupText(
@@ -94,11 +113,12 @@ test('rejects unsupported fields, versions, values, and prototype-like input', a
   );
 });
 
-test('accepts every v1 setting boundary and rejects invalid values', () => {
+test('accepts every v2 text-scale step and rejects invalid values', () => {
+  assert.equal(SUPPORTED_TEXT_SCALES.length, 21);
   for (const language of ['en', 'zh', 'zh-cn', 'es']) {
     for (const theme of ['light', 'dark']) {
       for (const setupComplete of [false, true]) {
-        for (const textScale of [1, 1.25, 1.5]) {
+        for (const textScale of SUPPORTED_TEXT_SCALES) {
           assert.deepEqual(
             validateBackupSettings({ language, theme, setupComplete, textScale }),
             { language, theme, setupComplete, textScale },
@@ -113,8 +133,53 @@ test('accepts every v1 setting boundary and rejects invalid values', () => {
     /must be true or false/,
   );
   assert.throws(
-    () => validateBackupSettings({ ...settings, textScale: 1.1 }),
+    () => validateBackupSettings({ ...settings, textScale: 1.11 }),
     /text scale is unsupported/,
+  );
+  for (const textScale of [Number.NaN, Number.POSITIVE_INFINITY, 0.95, 2.05]) {
+    assert.throws(
+      () => validateBackupSettings({ ...settings, textScale }),
+      /text scale is unsupported/,
+    );
+  }
+});
+
+test('verifies a v1 checksum before migrating legacy settings to normalized v2', async () => {
+  assert.deepEqual(LEGACY_SUPPORTED_TEXT_SCALES, [1, 1.25, 1.5]);
+  const legacySettings = { ...settings, textScale: 1.5 };
+  const legacyEnvelope = createLegacyEnvelope(legacySettings);
+
+  const migrated = await validateBackupText(JSON.stringify(legacyEnvelope), sha256);
+  assert.equal(migrated.version, BACKUP_VERSION);
+  assert.deepEqual(migrated.data, legacySettings);
+  assert.notEqual(migrated.integrity.digest, legacyEnvelope.integrity.digest);
+  assert.equal(
+    migrated.integrity.digest,
+    sha256(
+      canonicalize({
+        format: BACKUP_FORMAT,
+        version: BACKUP_VERSION,
+        createdAt,
+        data: legacySettings,
+      }),
+    ),
+  );
+
+  const checksumAlteredLegacy = {
+    ...legacyEnvelope,
+    data: { ...legacyEnvelope.data, textScale: 1.25 },
+  };
+  await assert.rejects(
+    validateBackupText(JSON.stringify(checksumAlteredLegacy), sha256),
+    /checksum does not match/,
+  );
+});
+
+test('v1 migration remains limited to the three legacy text sizes', async () => {
+  const unsupportedLegacy = createLegacyEnvelope({ ...settings, textScale: 1.1 });
+  await assert.rejects(
+    validateBackupText(JSON.stringify(unsupportedLegacy), sha256),
+    /text scale is unsupported for version 1/,
   );
 });
 

@@ -6,7 +6,7 @@ import { useAppTheme } from '@/constants/Themes';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { List } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -111,11 +111,15 @@ const allLabels = {
 
 export default function WorshipScreen() {
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
   const theme = useAppTheme();
   const { language } = useContext(LanguageContext);
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
   const labels = allLabels[language as keyof typeof allLabels] || allLabels.en;
 
@@ -216,7 +220,7 @@ export default function WorshipScreen() {
         style={NavigationStyles.container}
         contentContainerStyle={[
           NavigationStyles.contentContainer,
-          { paddingTop: headerHeight, paddingBottom: 40 },
+          { paddingTop: headerHeight },
         ]}
       >
         <Section title={labels.elmhurstTitle} events={createEvents('elmhurst')} />

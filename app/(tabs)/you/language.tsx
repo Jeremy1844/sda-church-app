@@ -6,17 +6,21 @@ import { useAppTheme } from "@/constants/Themes";
 import { createNavigationStyles } from "@/styles/NavigationStyles";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useContext } from "react";
-import { ScrollView } from "react-native";
+import { ScrollView, useWindowDimensions } from "react-native";
 import { List } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function LanguageScreen() {
   const { language, setLanguage } = useContext(LanguageContext);
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
   const { backTo } = useLocalSearchParams();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
 
   const allLabels = {

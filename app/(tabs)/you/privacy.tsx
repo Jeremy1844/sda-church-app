@@ -4,7 +4,7 @@ import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,10 +20,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function PrivacyPolicyScreen() {
   const theme = useAppTheme();
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
   const styles = createStyles(textScale);
   const { backTo } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
 
   return (
@@ -31,7 +35,7 @@ export default function PrivacyPolicyScreen() {
       style={[NavigationStyles.container, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={[
         NavigationStyles.contentContainer,
-        { paddingTop: headerHeight + 20, paddingBottom: insets.bottom + 80 },
+        { paddingTop: headerHeight + 20 },
       ]}
     >
       <Stack.Screen options={{ title: 'Privacy Policy', backTo } as any} />

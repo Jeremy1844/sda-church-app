@@ -1,12 +1,16 @@
 'use strict';
 
 const BACKUP_FORMAT = 'org.nyccsda.sda-church-app.local-settings';
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
+const LEGACY_BACKUP_VERSION = 1;
 const MAX_BACKUP_BYTES = 64 * 1024;
 const SHA256_ALGORITHM = 'SHA-256';
 const SUPPORTED_LANGUAGES = Object.freeze(['en', 'zh', 'zh-cn', 'es']);
 const SUPPORTED_THEMES = Object.freeze(['light', 'dark']);
-const SUPPORTED_TEXT_SCALES = Object.freeze([1, 1.25, 1.5]);
+const LEGACY_SUPPORTED_TEXT_SCALES = Object.freeze([1, 1.25, 1.5]);
+const SUPPORTED_TEXT_SCALES = Object.freeze(
+  Array.from({ length: 21 }, (_, index) => Number((1 + index * 0.05).toFixed(2))),
+);
 const SHA256_HEX = /^[a-f0-9]{64}$/;
 
 function isPlainObject(value) {
@@ -92,7 +96,7 @@ function validateCreatedAt(createdAt) {
   }
 }
 
-function validateBackupSettings(settings) {
+function validateBackupSettingsForVersion(settings, version) {
   assertExactKeys(
     settings,
     ['language', 'setupComplete', 'textScale', 'theme'],
@@ -108,8 +112,12 @@ function validateBackupSettings(settings) {
   if (typeof settings.setupComplete !== 'boolean') {
     throw new Error('Backup setup state must be true or false.');
   }
-  if (!SUPPORTED_TEXT_SCALES.includes(settings.textScale)) {
-    throw new Error('Backup text scale is unsupported.');
+  const supportedTextScales =
+    version === LEGACY_BACKUP_VERSION
+      ? LEGACY_SUPPORTED_TEXT_SCALES
+      : SUPPORTED_TEXT_SCALES;
+  if (!supportedTextScales.includes(settings.textScale)) {
+    throw new Error(`Backup text scale is unsupported for version ${version}.`);
   }
 
   return {
@@ -118,6 +126,10 @@ function validateBackupSettings(settings) {
     setupComplete: settings.setupComplete,
     textScale: settings.textScale,
   };
+}
+
+function validateBackupSettings(settings) {
+  return validateBackupSettingsForVersion(settings, BACKUP_VERSION);
 }
 
 function integrityContent(envelope) {
@@ -194,11 +206,14 @@ async function validateBackupText(text, sha256) {
   if (parsed.format !== BACKUP_FORMAT) {
     throw new Error('Backup format is unsupported.');
   }
-  if (parsed.version !== BACKUP_VERSION) {
+  if (
+    parsed.version !== LEGACY_BACKUP_VERSION &&
+    parsed.version !== BACKUP_VERSION
+  ) {
     throw new Error(`Backup version ${String(parsed.version)} is unsupported.`);
   }
   validateCreatedAt(parsed.createdAt);
-  const data = validateBackupSettings(parsed.data);
+  const data = validateBackupSettingsForVersion(parsed.data, parsed.version);
 
   assertExactKeys(parsed.integrity, ['algorithm', 'digest'], 'Backup integrity');
   if (parsed.integrity.algorithm !== SHA256_ALGORITHM) {
@@ -208,25 +223,37 @@ async function validateBackupText(text, sha256) {
     throw new Error('Backup checksum is malformed.');
   }
 
-  const normalizedEnvelope = {
+  const expectedDigest = await calculateDigest(
+    sha256,
+    canonicalize({
+      format: parsed.format,
+      version: parsed.version,
+      createdAt: parsed.createdAt,
+      data: parsed.data,
+    }),
+  );
+  if (!constantTimeEqual(expectedDigest, parsed.integrity.digest)) {
+    throw new Error('Backup checksum does not match the file contents.');
+  }
+
+  const migratedContent = {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     createdAt: parsed.createdAt,
     data,
+  };
+  const migratedDigest =
+    parsed.version === BACKUP_VERSION
+      ? parsed.integrity.digest
+      : await calculateDigest(sha256, canonicalize(migratedContent));
+
+  return {
+    ...migratedContent,
     integrity: {
       algorithm: SHA256_ALGORITHM,
-      digest: parsed.integrity.digest,
+      digest: migratedDigest,
     },
   };
-  const expectedDigest = await calculateDigest(
-    sha256,
-    canonicalize(integrityContent(normalizedEnvelope)),
-  );
-  if (!constantTimeEqual(expectedDigest, normalizedEnvelope.integrity.digest)) {
-    throw new Error('Backup checksum does not match the file contents.');
-  }
-
-  return normalizedEnvelope;
 }
 
 async function applyKeyValueTransaction(storage, changes) {
@@ -299,6 +326,8 @@ async function applyKeyValueTransaction(storage, changes) {
 module.exports = {
   BACKUP_FORMAT,
   BACKUP_VERSION,
+  LEGACY_BACKUP_VERSION,
+  LEGACY_SUPPORTED_TEXT_SCALES,
   MAX_BACKUP_BYTES,
   SHA256_ALGORITHM,
   SUPPORTED_LANGUAGES,

@@ -62,7 +62,8 @@ import { createReaderStyles } from '@/styles/ReaderStyles';
 
 // Generalizing dimensions to ensure responsiveness across iPhone/Tablet
 const DOCK_HEIGHT = 60;
-const FOOTER_PADDDING_OFFSET = 150;
+const DOCK_PILL_HEIGHT = 44;
+const SELECTION_BAR_HEIGHT = 56;
 
 const BIBLE_TRANS_KEY = 'user-bible-translation';
 const BIBLE_BOOK_KEY = 'user-bible-book';
@@ -181,23 +182,35 @@ const loadErrorLabels = {
 export default function BibleScreen() {
   const theme = useAppTheme();
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
-  const ReaderStyles = createReaderStyles(textScale);
   const insets = useSafeAreaInsets();
   const outboundShare = useOutboundShare();
-  const { fontScale } = useWindowDimensions();
-  const dockBottomMargin = getBottomTabContentHeight(fontScale);
+  const { width, fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
+  const ReaderStyles = createReaderStyles(textScale);
+  const resolvedFontScale =
+    Number.isFinite(fontScale) && fontScale > 0 ? fontScale : 1;
+  const effectiveTextScale = Math.max(1, resolvedFontScale * textScale);
+  const compactDock = width < 480 || effectiveTextScale > 1.25;
+  const dockPillEffectiveScale = Math.min(effectiveTextScale, 1.25);
+  const dockPillTextStyle = {
+    fontSize:
+      Math.round(
+        15 * (dockPillEffectiveScale / resolvedFontScale) * 100,
+      ) / 100,
+  };
+  const selectionActionsStacked = width < 520 || effectiveTextScale > 1.25;
+  const dockBottomMargin = getBottomTabContentHeight(effectiveTextScale);
+  const dockControlHeight = Math.ceil(DOCK_HEIGHT * effectiveTextScale);
+  const dockPillHeight = Math.ceil(DOCK_PILL_HEIGHT * effectiveTextScale);
+  const selectionBarHeight = Math.ceil(
+    (selectionActionsStacked ? 84 : SELECTION_BAR_HEIGHT) * effectiveTextScale,
+  );
   const { language } = useContext(LanguageContext);
   const { menuAnim, setMenuVisible: setGlobalMenuVisible } = useContext(UIStateContext);
   const [menuVisible, setMenuVisible] = useState(true);
-
-  const animatedDockHeight = menuAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [
-      DOCK_HEIGHT + insets.bottom,
-      DOCK_HEIGHT + dockBottomMargin + insets.bottom,
-    ],
-  });
 
   const rawReaderParams = useLocalSearchParams<{
     bookId?: string | string[];
@@ -297,6 +310,14 @@ export default function BibleScreen() {
   };
   const clearSelection = () => setSelectedVerses(new Set());
   const isSelectionActive = selectedVerses.size > 0;
+  const dockContentHeight =
+    dockControlHeight + (isSelectionActive ? selectionBarHeight : 0);
+  const hiddenDockHeight = dockContentHeight + insets.bottom;
+  const visibleDockHeight = hiddenDockHeight + dockBottomMargin;
+  const animatedDockHeight = menuAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [hiddenDockHeight, visibleDockHeight],
+  });
 
   const updateMenuVisibility = (visible: boolean) => {
     setMenuVisible(visible);
@@ -1487,7 +1508,7 @@ export default function BibleScreen() {
           ReaderStyles.scrollContent,
           {
             paddingTop: headerHeight + 10,
-            paddingBottom: insets.bottom + FOOTER_PADDDING_OFFSET,
+            paddingBottom: visibleDockHeight + 24,
           },
         ]}
       >
@@ -1551,18 +1572,8 @@ export default function BibleScreen() {
                 ],
                 zIndex: 1,
                 bottom: animatedDockHeight.interpolate({
-                  inputRange: [
-                    DOCK_HEIGHT + insets.bottom,
-                    DOCK_HEIGHT + dockBottomMargin + insets.bottom,
-                  ],
-                  outputRange: [
-                    DOCK_HEIGHT + insets.bottom + 16 + (selectedVerses.size > 0 ? 56 : 0),
-                    DOCK_HEIGHT +
-                      dockBottomMargin +
-                      insets.bottom +
-                      16 +
-                      (selectedVerses.size > 0 ? 56 : 0),
-                  ],
+                  inputRange: [hiddenDockHeight, visibleDockHeight],
+                  outputRange: [hiddenDockHeight + 16, visibleDockHeight + 16],
                 }),
               },
             ]}
@@ -1603,30 +1614,40 @@ export default function BibleScreen() {
 
         {/* Selection Actions Bar (Integrated) */}
         {isSelectionActive && (
-          <View style={{ height: 56 }}>
-            <View style={styles.selectionBarInner}>
+          <View style={{ height: selectionBarHeight }}>
+            <View
+              style={[
+                styles.selectionBarInner,
+                selectionActionsStacked && styles.selectionBarInnerStacked,
+              ]}
+            >
               <Text
                 variant="labelLarge"
-                style={{ marginLeft: 16, color: theme.colors.onSurface }}
+                style={[
+                  styles.selectionCount,
+                  selectionActionsStacked && styles.selectionCountStacked,
+                  { color: theme.colors.onSurface },
+                ]}
               >
                 {labels.selected.replace('{n}', selectedVerses.size.toString())}
               </Text>
-              <View style={{ flex: 1 }} />
-              <Button onPress={clearSelection}>{labels.cancel}</Button>
-              <Button
-                mode="contained"
-                icon="share-variant"
-                onPress={handleShare}
-                style={{ marginRight: 8, borderRadius: 20 }}
-              >
-                {labels.shareAction}
-              </Button>
+              <View style={styles.selectionActions}>
+                <Button onPress={clearSelection}>{labels.cancel}</Button>
+                <Button
+                  mode="contained"
+                  icon="share-variant"
+                  onPress={handleShare}
+                  style={styles.selectionShareButton}
+                >
+                  {labels.shareAction}
+                </Button>
+              </View>
             </View>
           </View>
         )}
 
-        <View style={ReaderStyles.dockInner}>
-          <View style={ReaderStyles.sideSlot}>
+        <View style={[ReaderStyles.dockInner, { height: dockControlHeight }]}>
+          <View style={[ReaderStyles.sideSlot, { height: dockControlHeight }]}>
             {!isFirstChapter ? (
               <IconButton
                 icon="chevron-left"
@@ -1641,56 +1662,85 @@ export default function BibleScreen() {
 
           <View style={ReaderStyles.pillsContainer}>
             <TouchableOpacity
+              accessibilityLabel={`${labels.translation}: ${supportedTranslation.name}`}
+              accessibilityRole="button"
               style={[
                 ReaderStyles.pill,
-                { backgroundColor: theme.colors.surfaceVariant },
+                compactDock && styles.dockPillCompact,
+                compactDock && styles.translationPillCompact,
+                {
+                  height: dockPillHeight,
+                  backgroundColor: theme.colors.surfaceVariant,
+                },
               ]}
               onPress={() => setModalType('translation')}
             >
-              <Text numberOfLines={1} style={ReaderStyles.pillText}>
+              <Text
+                numberOfLines={1}
+                style={[ReaderStyles.pillText, dockPillTextStyle]}
+              >
                 {supportedTranslation.name}
               </Text>
               <MaterialCommunityIcons
                 name="chevron-down"
-                size={16}
+                size={compactDock ? 12 : 16}
                 color={theme.colors.onSurfaceVariant}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessibilityLabel={`${labels.book}: ${book?.name || 'Loading'}`}
+              accessibilityRole="button"
               style={[
                 ReaderStyles.pill,
-                { backgroundColor: theme.colors.surfaceVariant },
+                compactDock && styles.dockPillCompact,
+                compactDock && styles.bookPillCompact,
+                {
+                  height: dockPillHeight,
+                  backgroundColor: theme.colors.surfaceVariant,
+                },
               ]}
               onPress={() => setModalType('book')}
             >
-              <Text numberOfLines={1} style={ReaderStyles.pillText}>
+              <Text
+                numberOfLines={1}
+                style={[ReaderStyles.pillText, dockPillTextStyle]}
+              >
                 {book?.name || '...'}
               </Text>
               <MaterialCommunityIcons
                 name="chevron-down"
-                size={16}
+                size={compactDock ? 12 : 16}
                 color={theme.colors.onSurfaceVariant}
               />
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessibilityLabel={`${labels.chapter}: ${chapterNum}`}
+              accessibilityRole="button"
               style={[
                 ReaderStyles.pill,
-                { backgroundColor: theme.colors.surfaceVariant },
+                compactDock && styles.dockPillCompact,
+                compactDock && styles.chapterPillCompact,
+                {
+                  height: dockPillHeight,
+                  backgroundColor: theme.colors.surfaceVariant,
+                },
               ]}
               onPress={() => setModalType('chapter')}
             >
-              <Text style={ReaderStyles.pillText}>{chapterNum}</Text>
+              <Text style={[ReaderStyles.pillText, dockPillTextStyle]}>
+                {chapterNum}
+              </Text>
               <MaterialCommunityIcons
                 name="chevron-down"
-                size={16}
+                size={compactDock ? 12 : 16}
                 color={theme.colors.onSurfaceVariant}
               />
             </TouchableOpacity>
           </View>
 
-          <View style={ReaderStyles.sideSlot}>
+          <View style={[ReaderStyles.sideSlot, { height: dockControlHeight }]}>
             {!isLastChapter ? (
               <IconButton
                 icon="chevron-right"
@@ -1909,10 +1959,49 @@ export default function BibleScreen() {
 }
 
 const styles = StyleSheet.create({
+  dockPillCompact: {
+    flexBasis: 0,
+    gap: 1,
+    minWidth: 0,
+    paddingHorizontal: 3,
+  },
+  translationPillCompact: {
+    flexGrow: 1,
+  },
+  bookPillCompact: {
+    flexGrow: 1.62,
+  },
+  chapterPillCompact: {
+    flexGrow: 0.53,
+  },
   selectionBarInner: {
     flexDirection: 'row',
     alignItems: 'center',
     height: '100%',
     paddingRight: 8,
+  },
+  selectionBarInnerStacked: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+  },
+  selectionCount: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  selectionCountStacked: {
+    flex: 0,
+    marginLeft: 8,
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  selectionShareButton: {
+    marginRight: 8,
+    borderRadius: 20,
   },
 });

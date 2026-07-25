@@ -1,6 +1,28 @@
 export type BackupLanguage = 'en' | 'zh' | 'zh-cn' | 'es';
 export type BackupTheme = 'light' | 'dark';
-export type BackupTextScale = 1 | 1.25 | 1.5;
+export type LegacyBackupTextScale = 1 | 1.25 | 1.5;
+export type BackupTextScale =
+  | 1
+  | 1.05
+  | 1.1
+  | 1.15
+  | 1.2
+  | 1.25
+  | 1.3
+  | 1.35
+  | 1.4
+  | 1.45
+  | 1.5
+  | 1.55
+  | 1.6
+  | 1.65
+  | 1.7
+  | 1.75
+  | 1.8
+  | 1.85
+  | 1.9
+  | 1.95
+  | 2;
 
 export interface BackupSettings {
   language: BackupLanguage;
@@ -30,10 +52,12 @@ export type StorageChange = readonly [key: string, value: string | null];
 export type Sha256Provider = (value: string) => string | Promise<string>;
 
 export const BACKUP_FORMAT: 'org.nyccsda.sda-church-app.local-settings';
-export const BACKUP_VERSION: 1;
+export const BACKUP_VERSION: 2;
+export const LEGACY_BACKUP_VERSION: 1;
 export const MAX_BACKUP_BYTES: 65536;
 export const SHA256_ALGORITHM: 'SHA-256';
 export const SUPPORTED_LANGUAGES: readonly BackupLanguage[];
+export const LEGACY_SUPPORTED_TEXT_SCALES: readonly LegacyBackupTextScale[];
 export const SUPPORTED_TEXT_SCALES: readonly BackupTextScale[];
 export const SUPPORTED_THEMES: readonly BackupTheme[];
 

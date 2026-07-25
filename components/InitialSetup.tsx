@@ -1,5 +1,9 @@
 import { PwaInstallDialog } from '@/components/PwaInstallDialog';
-import { TEXT_SCALE_OPTIONS, isTextScale } from '@/constants/AppPreferences';
+import {
+  TEXT_SCALE_OPTIONS,
+  isTextScale,
+  type TextScale,
+} from '@/constants/AppPreferences';
 import {
   LanguageContext,
   SupportedLanguage,
@@ -7,7 +11,7 @@ import {
 import { usePwaInstall } from '@/constants/PwaInstallContext';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { ThemeContext, useAppTheme } from '@/constants/Themes';
-import { useContext, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import {
   Button,
@@ -28,6 +32,10 @@ export const InitialSetup = ({ onComplete }: InitialSetupProps) => {
   const { setTextScale, textScale } = useTextSize();
   const theme = useAppTheme();
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [isSavingTextScale, setIsSavingTextScale] = useState(false);
+  const [failedTextScale, setFailedTextScale] = useState<TextScale | null>(null);
+  const textScaleWritePendingRef = useRef(false);
+  const failedTextScaleRef = useRef<TextScale | null>(null);
 
   const allLabels = {
     en: {
@@ -74,6 +82,34 @@ export const InitialSetup = ({ onComplete }: InitialSetupProps) => {
   const installLabel =
     installStatus === 'standalone' ? 'Installation status' : 'Install app';
 
+  const persistTextScale = async (nextScale: TextScale) => {
+    if (textScaleWritePendingRef.current) return;
+
+    textScaleWritePendingRef.current = true;
+    setIsSavingTextScale(true);
+    try {
+      await setTextScale(nextScale);
+      failedTextScaleRef.current = null;
+      setFailedTextScale(null);
+    } catch {
+      failedTextScaleRef.current = nextScale;
+      setFailedTextScale(nextScale);
+    } finally {
+      textScaleWritePendingRef.current = false;
+      setIsSavingTextScale(false);
+    }
+  };
+
+  const completeSetup = () => {
+    if (
+      textScaleWritePendingRef.current ||
+      failedTextScaleRef.current !== null
+    ) {
+      return;
+    }
+    onComplete();
+  };
+
   return (
     <>
       <Portal>
@@ -99,13 +135,20 @@ export const InitialSetup = ({ onComplete }: InitialSetupProps) => {
               </Text>
               <SegmentedButtons
                 value={language}
-                onValueChange={(v) => setLanguage(v as SupportedLanguage)}
+                onValueChange={(v) => {
+                  if (!textScaleWritePendingRef.current) {
+                    setLanguage(v as SupportedLanguage);
+                  }
+                }}
                 buttons={[
                   { value: 'en', label: 'EN' },
                   { value: 'zh', label: '繁體' },
                   { value: 'zh-cn', label: '简体' },
                   { value: 'es', label: 'ES' },
-                ]}
+                ].map((button) => ({
+                  ...button,
+                  disabled: isSavingTextScale,
+                }))}
               />
             </View>
 
@@ -115,11 +158,18 @@ export const InitialSetup = ({ onComplete }: InitialSetupProps) => {
               </Text>
               <SegmentedButtons
                 value={theme.dark ? 'dark' : 'light'}
-                onValueChange={toggleTheme}
+                onValueChange={(value) => {
+                  if (!textScaleWritePendingRef.current) {
+                    toggleTheme(value);
+                  }
+                }}
                 buttons={[
                   { value: 'light', label: labels.light, icon: 'weather-sunny' },
                   { value: 'dark', label: labels.dark, icon: 'weather-night' },
-                ]}
+                ].map((button) => ({
+                  ...button,
+                  disabled: isSavingTextScale,
+                }))}
               />
             </View>
 
@@ -137,15 +187,46 @@ export const InitialSetup = ({ onComplete }: InitialSetupProps) => {
                 onValueChange={(value) => {
                   const nextScale = Number(value);
                   if (isTextScale(nextScale)) {
-                    void setTextScale(nextScale);
+                    void persistTextScale(nextScale);
                   }
                 }}
                 buttons={TEXT_SCALE_OPTIONS.map((scale) => ({
                   accessibilityLabel: `${Math.round(scale * 100)} percent text size`,
+                  disabled: isSavingTextScale,
                   label: `${Math.round(scale * 100)}%`,
                   value: String(scale),
                 }))}
               />
+              {isSavingTextScale && (
+                <Text
+                  accessibilityLiveRegion="polite"
+                  style={styles.textScaleStatus}
+                  variant="bodyMedium"
+                >
+                  Saving text size…
+                </Text>
+              )}
+              {failedTextScale !== null && !isSavingTextScale && (
+                <View style={styles.textScaleError}>
+                  <Text
+                    accessibilityLiveRegion="assertive"
+                    role="alert"
+                    style={{ color: theme.colors.error }}
+                    variant="bodyMedium"
+                  >
+                    {`${Math.round(failedTextScale * 100)}% text size could not be saved. Retry before continuing.`}
+                  </Text>
+                  <Button
+                    accessibilityLabel={`Retry saving ${Math.round(failedTextScale * 100)} percent text size`}
+                    compact
+                    mode="outlined"
+                    onPress={() => void persistTextScale(failedTextScale)}
+                    style={styles.retryButton}
+                  >
+                    Retry
+                  </Button>
+                </View>
+              )}
             </View>
 
             {Platform.OS === 'web' && (
@@ -160,7 +241,12 @@ export const InitialSetup = ({ onComplete }: InitialSetupProps) => {
               </Button>
             )}
 
-            <Button mode="contained" onPress={onComplete} style={styles.button}>
+            <Button
+              disabled={isSavingTextScale || failedTextScale !== null}
+              mode="contained"
+              onPress={completeSetup}
+              style={styles.button}
+            >
               {labels.start}
             </Button>
           </ScrollView>
@@ -210,6 +296,17 @@ const styles = StyleSheet.create({
   },
   installButton: {
     marginBottom: 12,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  textScaleError: {
+    marginTop: 12,
+  },
+  textScaleStatus: {
+    marginTop: 12,
+    opacity: 0.75,
   },
   button: {
     marginTop: 8,

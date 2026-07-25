@@ -6,7 +6,7 @@ import type {
   OutboundSharePayload,
 } from '@/services/OutboundSharePolicy';
 import { useCallback, useState } from 'react';
-import { Platform, Share, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Button, Dialog, Portal, Snackbar, Text } from 'react-native-paper';
 
 const ENGLISH_FALLBACK_COPY = Object.freeze({
@@ -82,32 +82,39 @@ export function OutboundShareFeedback({
 
   return (
     <Portal>
-      <Dialog visible={isManual} onDismiss={onDismiss}>
+      <Dialog visible={isManual} onDismiss={onDismiss} style={styles.dialog}>
         <Dialog.Title>{ENGLISH_FALLBACK_COPY.manualTitle}</Dialog.Title>
-        <Dialog.Content>
-          {language !== 'en' && (
-            <Text variant="labelMedium" style={styles.englishOnlyNotice}>
-              {ENGLISH_FALLBACK_COPY.englishOnlyNotice}
-            </Text>
-          )}
-          <Text accessibilityLiveRegion="polite" variant="bodyMedium">
-            {ENGLISH_FALLBACK_COPY.manualInstructions}
-          </Text>
-          <View
-            style={[
-              styles.manualTextContainer,
-              { borderColor: theme.colors.outlineVariant },
-            ]}
+        <Dialog.ScrollArea style={styles.scrollArea}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            automaticallyAdjustKeyboardInsets
           >
-            <Text
-              selectable
-              accessibilityLabel={ENGLISH_FALLBACK_COPY.manualTextLabel}
-              variant="bodyMedium"
-            >
-              {feedback?.manualText}
+            {language !== 'en' && (
+              <Text variant="labelMedium" style={styles.englishOnlyNotice}>
+                {ENGLISH_FALLBACK_COPY.englishOnlyNotice}
+              </Text>
+            )}
+            <Text accessibilityLiveRegion="polite" variant="bodyMedium">
+              {ENGLISH_FALLBACK_COPY.manualInstructions}
             </Text>
-          </View>
-        </Dialog.Content>
+            <View
+              style={[
+                styles.manualTextContainer,
+                { borderColor: theme.colors.outlineVariant },
+              ]}
+            >
+              <Text
+                selectable
+                accessibilityLabel={ENGLISH_FALLBACK_COPY.manualTextLabel}
+                variant="bodyMedium"
+              >
+                {feedback?.manualText}
+              </Text>
+            </View>
+          </ScrollView>
+        </Dialog.ScrollArea>
         <Dialog.Actions>
           <Button onPress={onDismiss}>{ENGLISH_FALLBACK_COPY.close}</Button>
         </Dialog.Actions>
@@ -128,6 +135,19 @@ export function OutboundShareFeedback({
 }
 
 const styles = StyleSheet.create({
+  dialog: {
+    alignSelf: 'center',
+    width: '90%',
+    maxWidth: 640,
+    maxHeight: '90%',
+  },
+  scrollArea: {
+    paddingHorizontal: 0,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+  },
   englishOnlyNotice: {
     fontWeight: '700',
     marginBottom: 8,
@@ -136,7 +156,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 8,
     marginTop: 16,
-    maxHeight: 240,
     padding: 12,
   },
 });

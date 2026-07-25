@@ -1,5 +1,4 @@
 import { GlobalHeader, UIStateContext } from '@/components/GlobalHeader';
-import { scaleTypographyMetric } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import { useTextSize } from '@/constants/TextSizeContext';
@@ -16,6 +15,10 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const COMPACT_TAB_LABEL_MAX_EFFECTIVE_SCALE = 1.5;
+
+const roundMetric = (value: number) => Math.round(value * 100) / 100;
 
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -43,8 +46,20 @@ export default function TabLayout() {
   const { language } = useContext(LanguageContext);
   const { textScale } = useTextSize();
   const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
+  const { fontScale, width } = useWindowDimensions();
   const tabBarContentHeight = getBottomTabContentHeight(fontScale * textScale);
+  // Four fixed-width destinations must remain distinguishable at the narrowest
+  // supported phone size. React Navigation still applies the OS font scale after
+  // `fontSize`, so cap the *combined* scale for this compact chrome treatment.
+  // Page content and the tab-bar height continue to honor both selected scales.
+  const resolvedFontScale =
+    Number.isFinite(fontScale) && fontScale > 0 ? fontScale : 1;
+  const effectiveTabLabelScale = resolvedFontScale * textScale;
+  const tabLabelAppScale =
+    width < 480 &&
+    effectiveTabLabelScale > COMPACT_TAB_LABEL_MAX_EFFECTIVE_SCALE
+      ? COMPACT_TAB_LABEL_MAX_EFFECTIVE_SCALE / resolvedFontScale
+      : textScale;
 
   // Reader Mode state shared with child screens
   const menuAnim = useRef(new Animated.Value(1)).current;
@@ -63,7 +78,7 @@ export default function TabLayout() {
 
   const tabBarTranslateY = menuAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [120, 0],
+    outputRange: [tabBarContentHeight + insets.bottom + 16, 0],
   });
 
   const allLabels = {
@@ -108,7 +123,16 @@ export default function TabLayout() {
               transform: [{ translateY: tabBarTranslateY }],
             }}
           >
-            <BottomTabBar {...props} />
+            <View
+              style={{
+                alignSelf: 'center',
+                height: tabBarContentHeight + insets.bottom,
+                maxWidth: 960,
+                width: '100%',
+              }}
+            >
+              <BottomTabBar {...props} />
+            </View>
           </Animated.View>
         )}
         screenOptions={{
@@ -123,13 +147,11 @@ export default function TabLayout() {
               ios: 'System',
               web: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
             }),
-            fontSize: scaleTypographyMetric(
-              DESIGN_TOKENS.BOTTOM_TAB_LABEL_FONT_SIZE,
-              textScale,
+            fontSize: roundMetric(
+              DESIGN_TOKENS.BOTTOM_TAB_LABEL_FONT_SIZE * tabLabelAppScale,
             ),
-            lineHeight: scaleTypographyMetric(
-              DESIGN_TOKENS.BOTTOM_TAB_LABEL_LINE_HEIGHT,
-              textScale,
+            lineHeight: roundMetric(
+              DESIGN_TOKENS.BOTTOM_TAB_LABEL_LINE_HEIGHT * tabLabelAppScale,
             ),
             paddingBottom: DESIGN_TOKENS.BOTTOM_TAB_LABEL_BOTTOM_PADDING,
           },
@@ -140,6 +162,9 @@ export default function TabLayout() {
             // React Navigation treats an explicit height as inclusive of the safe area.
             // Add the bottom inset here to preserve the full label/touch-target region.
             height: tabBarContentHeight + insets.bottom,
+            alignSelf: 'center',
+            width: '100%',
+            maxWidth: 960,
             elevation: 0,
             backgroundColor: 'transparent',
             borderTopWidth: 0,

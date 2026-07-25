@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   DEFAULT_TEXT_SCALE,
+  isTextScale,
   isStandaloneMode,
   normalizeTextScale,
   parseStoredTextScale,
@@ -11,16 +12,48 @@ import {
   serializeTextScale,
 } from './AppPreferences.mjs';
 
-test('text-scale storage accepts only supported choices', () => {
+test('text-scale storage accepts the full 100%-200% range in 5% steps', () => {
   assert.equal(parseStoredTextScale('1'), 1);
+  assert.equal(parseStoredTextScale('1.05'), 1.05);
   assert.equal(parseStoredTextScale('1.25'), 1.25);
   assert.equal(parseStoredTextScale('1.5'), 1.5);
-  assert.equal(parseStoredTextScale('1.2'), DEFAULT_TEXT_SCALE);
+  assert.equal(parseStoredTextScale('1.95'), 1.95);
+  assert.equal(parseStoredTextScale('2'), 2);
+  assert.equal(parseStoredTextScale('1.1'), 1.1);
+  assert.equal(parseStoredTextScale('1.11'), DEFAULT_TEXT_SCALE);
+  assert.equal(parseStoredTextScale('0.95'), DEFAULT_TEXT_SCALE);
+  assert.equal(parseStoredTextScale('2.05'), DEFAULT_TEXT_SCALE);
   assert.equal(parseStoredTextScale('not-a-number'), DEFAULT_TEXT_SCALE);
   assert.equal(parseStoredTextScale(null), DEFAULT_TEXT_SCALE);
   assert.equal(normalizeTextScale(1.25), 1.25);
+  assert.equal(normalizeTextScale(1.1500000000000001), 1.15);
   assert.equal(normalizeTextScale('1.25'), DEFAULT_TEXT_SCALE);
-  assert.equal(serializeTextScale(1.5), '1.5');
+  assert.equal(serializeTextScale(1.1500000000000001), '1.15');
+  assert.equal(serializeTextScale(2), '2');
+});
+
+test('text-scale validation rejects non-finite, out-of-range, and off-step values', () => {
+  for (const value of [1, 1.05, 1.5, 1.95, 2]) {
+    assert.equal(isTextScale(value), true);
+  }
+  for (const value of [NaN, Infinity, -Infinity, 0.99, 1.01, 1.999, 2.01, '1.5']) {
+    assert.equal(isTextScale(value), false);
+  }
+  assert.throws(() => serializeTextScale(1.01), /100% and 200% in 5% steps/);
+  assert.throws(() => serializeTextScale(Number.NaN), /100% and 200% in 5% steps/);
+});
+
+test('text-scale validation normalizes every native Float32 slider step', () => {
+  for (let index = 0; index <= 20; index += 1) {
+    const exact = Number((1 + index * 0.05).toFixed(2));
+    const nativeValue = Math.fround(exact);
+    assert.equal(isTextScale(nativeValue), true, `${exact} Float32 value is accepted`);
+    assert.equal(normalizeTextScale(nativeValue), exact);
+    assert.equal(serializeTextScale(nativeValue), String(exact));
+  }
+
+  assert.equal(isTextScale(1.00001), false);
+  assert.equal(isTextScale(1.04999), false);
 });
 
 test('typography scaling changes font metrics without mutating the source', () => {

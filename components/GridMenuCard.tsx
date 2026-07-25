@@ -39,6 +39,10 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
   const { textScale } = useTextSize();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const disabled = !onPress;
+  const cursorStyle =
+    Platform.OS === 'web'
+      ? ({ cursor: disabled ? 'default' : 'pointer' } as ViewStyle)
+      : undefined;
 
   const handlePressIn = () => {
     if (disabled) return;
@@ -66,9 +70,23 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
   const strokeColor = iconColor ? iconColor.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, 'rgba($1,$2,$3,0.5)') : 'rgba(40, 40, 40, 0.3)';
 
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
+    <Animated.View
+      style={[
+        styles.wrapper,
+        cursorStyle,
+        { transform: [{ scale: scaleAnim }] },
+        style,
+      ]}
+    >
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: color, borderWidth: 1, borderColor: theme.colors.outlineVariant }]}
+        style={[
+          styles.card,
+          cursorStyle,
+          {
+            backgroundColor: color,
+            borderColor: theme.colors.outlineVariant,
+          },
+        ]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -78,7 +96,7 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
         activeOpacity={1}
       >
         {/* Title block — top left */}
-        <View style={styles.titleBlock}>
+        <View pointerEvents="none" style={styles.titleBlock}>
           <Text
             style={[
               styles.title,
@@ -108,7 +126,7 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
         </View>
 
         {/* Illustration + arrow row — bottom */}
-        <View style={styles.bottomRow}>
+        <View pointerEvents="none" style={styles.bottomRow}>
           <View style={styles.decorIconContainer}>
             <MaterialCommunityIcons
               name={icon}
@@ -133,7 +151,13 @@ export const GridMenuCard: React.FC<GridMenuCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    alignSelf: 'stretch',
+    minWidth: 0,
+  },
   card: {
+    flex: 1,
+    width: '100%',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#374151', // crisp dark border
@@ -147,7 +171,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontWeight: '700',
-    maxWidth: '90%',
+    maxWidth: '100%',
   },
   subtitle: {
     marginTop: 3,

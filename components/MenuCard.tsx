@@ -1,22 +1,27 @@
-import { DESIGN_TOKENS } from "@/constants/Layout";
+import { DESIGN_TOKENS } from '@/constants/Layout';
 import { scaleTypographyMetric } from '@/constants/AppPreferences';
 import { useTextSize } from '@/constants/TextSizeContext';
-import { useAppTheme } from "@/constants/Themes";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React from "react";
+import { useAppTheme } from '@/constants/Themes';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React from 'react';
 import {
+  AccessibilityRole,
+  AccessibilityState,
   Animated,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   ViewStyle,
-} from "react-native";
+} from 'react-native';
 
 const AnimatedTouchableOpacity =
   Animated.createAnimatedComponent(TouchableOpacity);
 
 interface MenuCardProps {
+  accessibilityRole?: AccessibilityRole;
+  accessibilityState?: AccessibilityState;
   title: string;
   description?: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
@@ -28,6 +33,8 @@ interface MenuCardProps {
 }
 
 export const MenuCard: React.FC<MenuCardProps> = ({
+  accessibilityRole = 'button',
+  accessibilityState,
   title,
   description,
   icon,
@@ -40,6 +47,10 @@ export const MenuCard: React.FC<MenuCardProps> = ({
   const theme = useAppTheme();
   const { textScale } = useTextSize();
   const resolvedRightIcon = onPress ? rightIcon : null;
+  const cursorStyle =
+    Platform.OS === 'web'
+      ? ({ cursor: onPress ? 'pointer' : 'default' } as ViewStyle)
+      : undefined;
   return (
     <AnimatedTouchableOpacity
       style={[
@@ -48,20 +59,22 @@ export const MenuCard: React.FC<MenuCardProps> = ({
           backgroundColor: theme.colors.surface,
           borderColor: theme.colors.outlineVariant,
         },
+        cursorStyle,
         style,
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !onPress }}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={{ ...accessibilityState, disabled: !onPress }}
     >
       <MaterialCommunityIcons
+        pointerEvents="none"
         name={icon}
         size={DESIGN_TOKENS.ICON_SIZE_FEATURED}
         color={iconColor || theme.colors.tertiary}
       />
-      <View style={styles.cardContent}>
+      <View pointerEvents="none" style={styles.cardContent}>
         <Text
           style={[
             styles.cardTitle,
@@ -90,9 +103,19 @@ export const MenuCard: React.FC<MenuCardProps> = ({
         )}
       </View>
       {rightElement
-        ? rightElement()
+        ? (
+            <View
+              pointerEvents="none"
+              accessible={false}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              {rightElement()}
+            </View>
+          )
         : resolvedRightIcon && (
             <MaterialCommunityIcons
+              pointerEvents="none"
               name={resolvedRightIcon}
               size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
               color={theme.colors.onSurfaceVariant}
@@ -104,14 +127,14 @@ export const MenuCard: React.FC<MenuCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
   },
   cardContent: { flex: 1, marginLeft: 16 },
-  cardTitle: { fontWeight: "700" },
+  cardTitle: { fontWeight: '700' },
   cardSubtitle: { marginTop: 2 },
 });

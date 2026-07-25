@@ -62,10 +62,10 @@ export const customLightTheme = {
   colors: {
     ...MD3LightTheme.colors,
     // Primary: Sanctuary Blue
-    primary: '#3EA6FF', // Primary Interaction Color Accent
-    onPrimary: '#F8F9FA', // Inverted Text (The Stencil)
+    primary: '#006FB9', // Accessible Sanctuary Blue (4.5:1+ on light surfaces)
+    onPrimary: '#FFFFFF', // Inverted Text (The Stencil)
     primaryContainer: '#E3F2FD', // Selection Container
-    onPrimaryContainer: '#3EA6FF', // General Iconography
+    onPrimaryContainer: '#006FB9', // General Iconography
     // Card background colors for light mode
     cardBgColors: {
       // home page
@@ -107,10 +107,10 @@ export const customLightTheme = {
     onSecondaryContainer: '#1A1A1A',
 
     // Tertiary: Identical to Primary in Light Mode for uniform UI color
-    tertiary: '#3EA6FF',
+    tertiary: '#006FB9',
     onTertiary: '#FFFFFF',
     tertiaryContainer: '#E3F2FD',
-    onTertiaryContainer: '#3EA6FF',
+    onTertiaryContainer: '#006FB9',
 
     // Backgrounds & Surfaces
     background: '#F2E6DF', // The Canvas
@@ -128,7 +128,7 @@ export const customLightTheme = {
     card: '#FFFFFF', // The Object
     text: '#1A1A1A', // The Ink
     border: '#E0E0E0', // The Divider
-    notification: '#3EA6FF', // Sanctuary Blue
+    notification: '#006FB9', // Sanctuary Blue
 
     // Branding (Special External Brand Colors)
     brandYoutube: '#FF0000',

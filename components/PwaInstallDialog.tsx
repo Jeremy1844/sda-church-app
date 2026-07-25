@@ -2,6 +2,7 @@ import { usePwaInstall } from '@/constants/PwaInstallContext';
 import { LanguageContext } from '@/constants/LanguageContext';
 import { resolvePwaInstallGuidance } from '@/services/PwaInstallGuidance';
 import { useState, useContext } from 'react';
+import { Platform, ScrollView, StyleSheet } from 'react-native';
 import { Button, Dialog, Portal, Text } from 'react-native-paper';
 
 interface PwaInstallDialogProps {
@@ -42,36 +43,43 @@ export const PwaInstallDialog = ({ onDismiss, visible }: PwaInstallDialogProps) 
 
   return (
     <Portal>
-      <Dialog visible={visible} onDismiss={onDismiss}>
+      <Dialog visible={visible} onDismiss={onDismiss} style={styles.dialog}>
         <Dialog.Title>{`Install app${englishOnly ? ' (English)' : ''}`}</Dialog.Title>
-        <Dialog.Content>
-          {englishOnly && (
-            <Text variant="labelMedium" accessibilityRole="text">
-              This new guidance is currently available in English.
-            </Text>
-          )}
-          <Text variant="bodyMedium" style={{ marginTop: englishOnly ? 12 : 0 }}>
-            {statusCopy[status]}
-          </Text>
-          {(status === 'dismissed' || status === 'accepted') && (
-            <Text variant="bodyMedium" style={{ marginTop: 12 }}>
-              You can also open the browser menu or share controls and use an install or
-              home-screen option if one is offered.
-            </Text>
-          )}
-          {status !== 'not-applicable' && status !== 'standalone' && (
-            <>
-              <Text variant="titleSmall" style={{ marginTop: 16 }}>
-                {`Manual steps for ${manualGuidance.platform}`}
+        <Dialog.ScrollArea style={styles.scrollArea}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            automaticallyAdjustKeyboardInsets
+          >
+            {englishOnly && (
+              <Text variant="labelMedium" accessibilityRole="text">
+                This new guidance is currently available in English.
               </Text>
-              {manualGuidance.steps.map((step, index) => (
-                <Text key={step} variant="bodyMedium" style={{ marginTop: 8 }}>
-                  {`${index + 1}. ${step}`}
+            )}
+            <Text variant="bodyMedium" style={{ marginTop: englishOnly ? 12 : 0 }}>
+              {statusCopy[status]}
+            </Text>
+            {(status === 'dismissed' || status === 'accepted') && (
+              <Text variant="bodyMedium" style={{ marginTop: 12 }}>
+                You can also open the browser menu or share controls and use an install or
+                home-screen option if one is offered.
+              </Text>
+            )}
+            {status !== 'not-applicable' && status !== 'standalone' && (
+              <>
+                <Text variant="titleSmall" style={{ marginTop: 16 }}>
+                  {`Manual steps for ${manualGuidance.platform}`}
                 </Text>
-              ))}
-            </>
-          )}
-        </Dialog.Content>
+                {manualGuidance.steps.map((step, index) => (
+                  <Text key={step} variant="bodyMedium" style={{ marginTop: 8 }}>
+                    {`${index + 1}. ${step}`}
+                  </Text>
+                ))}
+              </>
+            )}
+          </ScrollView>
+        </Dialog.ScrollArea>
         <Dialog.Actions>
           <Button onPress={onDismiss}>Close</Button>
           {status === 'prompt-available' && (
@@ -90,3 +98,19 @@ export const PwaInstallDialog = ({ onDismiss, visible }: PwaInstallDialogProps) 
     </Portal>
   );
 };
+
+const styles = StyleSheet.create({
+  dialog: {
+    alignSelf: 'center',
+    width: '90%',
+    maxWidth: 560,
+    maxHeight: '90%',
+  },
+  scrollArea: {
+    paddingHorizontal: 0,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 8,
+  },
+});

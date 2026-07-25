@@ -32,7 +32,7 @@ for (const sourceRoot of SOURCE_ROOTS) {
 
 if (violations.length > 0) {
   console.error(
-    'Unscaled numeric typography metrics bypass the saved 100/125/150% preference:',
+    'Unscaled numeric typography metrics bypass the saved 100-200% preference:',
   );
   for (const violation of violations) console.error(`- ${violation}`);
   console.error('Use scaleTypographyMetric or a text-scale-aware style factory.');

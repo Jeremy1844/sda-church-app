@@ -3,8 +3,16 @@
 For the current cross-browser capability decisions and follow-up recommendations, see the
 [PWA Capability Audit](./PWA_CAPABILITY_AUDIT.md).
 
-For the issue-by-issue local implementation evidence, unresolved gates, and final release
-validation record, see [Release Readiness 0.23.0](./RELEASE_READINESS_0.23.0.md).
+For the current issue-by-issue local implementation evidence, unresolved gates, and final
+release validation record, see
+[Release Readiness 0.23.1](./RELEASE_READINESS_0.23.1.md). The
+[0.23.0 record](./RELEASE_READINESS_0.23.0.md) preserves the original parity release
+matrix.
+
+For the 0.23.1 visual-stability scope and the app-first list of work Codex can complete,
+research, or prepare for church approval, see
+[Release Notes 0.23.1](./RELEASE_NOTES_0.23.1.md) and the
+[Codex Capability Roadmap](./CODEX_CAPABILITY_ROADMAP.md).
 
 Architecture decisions for fonts, localization, Bible/offline boundaries, public
 operations, external content, local backup, consent-first location, and future personal
@@ -24,7 +32,7 @@ npm install
 ```
 
 Make sure to fill out information specific to your church in
-[the Constants folder](/constants/).
+[the Constants folder](../constants/).
 
 ## Web & PWA Deployment (Primary Workflow)
 

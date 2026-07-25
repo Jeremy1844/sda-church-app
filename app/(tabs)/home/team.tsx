@@ -7,14 +7,14 @@ import {
 } from '@/constants/ExternalLinks';
 import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { LanguageContext } from '@/constants/LanguageContext';
-import { DESIGN_TOKENS } from '@/constants/Layout';
+import { DESIGN_TOKENS, getBottomTabContentHeight } from '@/constants/Layout';
 import { TEAM_MEMBERS } from '@/constants/TeamData';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext } from 'react';
-import { ImageBackground, ScrollView, StyleSheet, View } from 'react-native';
+import { ImageBackground, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Button, Card, Divider, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,7 +25,10 @@ export default function MeetOurTeamScreen() {
   const { backTo } = useLocalSearchParams();
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
+  const bottomGutter =
+    getBottomTabContentHeight(fontScale * textScale) + insets.bottom + 24;
 
   const allLabels = {
     en: {
@@ -80,7 +83,7 @@ export default function MeetOurTeamScreen() {
       <ScrollView
         style={[styles.container, { backgroundColor: theme.colors.background }]}
         contentContainerStyle={{
-          paddingBottom: insets.bottom + 40,
+          paddingBottom: bottomGutter,
         }}
       >
         {/* Hero Section Banner */}

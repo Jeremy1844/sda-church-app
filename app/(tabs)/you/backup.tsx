@@ -16,7 +16,13 @@ import type { LocalBackupEnvelope } from '@/services/LocalBackup';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useContext, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Button, Card, Dialog, Divider, Portal, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -99,11 +105,15 @@ function selectJsonFile(onSelect: (file: File) => void): void {
 export default function BackupScreen() {
   const { language } = useContext(LanguageContext);
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
+  const insets = useSafeAreaInsets();
+  const { fontScale, width } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
   const styles = createStyles(textScale);
   const theme = useAppTheme();
   const { backTo } = useLocalSearchParams();
-  const insets = useSafeAreaInsets();
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
   const [busy, setBusy] = useState<BusyAction>(null);
   const [preview, setPreview] = useState<LocalBackupEnvelope | null>(null);
@@ -111,6 +121,7 @@ export default function BackupScreen() {
   const [status, setStatus] = useState<StatusMessage>(null);
   const [reloadNeeded, setReloadNeeded] = useState(false);
   const isWeb = Platform.OS === 'web';
+  const stackDialogActions = width < 480 || fontScale * textScale > 1.25;
 
   const handleExport = async () => {
     setBusy('export');
@@ -233,10 +244,17 @@ export default function BackupScreen() {
         <Card mode="outlined" style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Card.Content>
             <Text variant="titleMedium" style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
-              v1 scope
+              v2 scope
             </Text>
             <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
               Included: language, light/dark theme, text size, and setup completion.
+            </Text>
+            <Text
+              variant="bodyMedium"
+              style={[styles.paragraph, { color: theme.colors.onSurfaceVariant }]}
+            >
+              New exports use version 2. Checksum-valid version 1 files remain supported
+              and are migrated only after their original checksum is verified.
             </Text>
             <Text
               variant="bodyMedium"
@@ -347,9 +365,14 @@ export default function BackupScreen() {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={preview !== null} onDismiss={() => busy === null && setPreview(null)}>
+        <Dialog
+          visible={preview !== null}
+          onDismiss={() => busy === null && setPreview(null)}
+          style={styles.dialog}
+        >
           <Dialog.Title>Restore preview</Dialog.Title>
-          <Dialog.Content>
+          <Dialog.ScrollArea>
+            <ScrollView contentContainerStyle={styles.dialogScrollContent}>
             <Text variant="titleSmall">Checksum verified</Text>
             <Text variant="bodyMedium" style={styles.previewLine}>
               Created: {preview ? new Date(preview.createdAt).toLocaleString() : ''}
@@ -370,13 +393,29 @@ export default function BackupScreen() {
               Restoring replaces only these four local settings. No other stored keys are
               read, changed, or deleted.
             </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button disabled={busy !== null} onPress={() => setPreview(null)}>
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions
+            style={[
+              styles.dialogActions,
+              stackDialogActions && styles.dialogActionsStacked,
+            ]}
+          >
+            <Button
+              style={stackDialogActions ? styles.dialogActionFullWidth : undefined}
+              disabled={busy !== null}
+              onPress={() => setPreview(null)}
+            >
               Cancel
             </Button>
-            <Button loading={busy === 'restore'} disabled={busy !== null} onPress={() => void handleRestore()}>
-              Restore these settings
+            <Button
+              accessibilityLabel="Restore these settings"
+              style={stackDialogActions ? styles.dialogActionFullWidth : undefined}
+              loading={busy === 'restore'}
+              disabled={busy !== null}
+              onPress={() => void handleRestore()}
+            >
+              {stackDialogActions ? 'Restore' : 'Restore these settings'}
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -384,26 +423,40 @@ export default function BackupScreen() {
         <Dialog
           visible={deleteDialogVisible}
           onDismiss={() => busy === null && setDeleteDialogVisible(false)}
+          style={styles.dialog}
         >
           <Dialog.Title>Delete local settings?</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodyMedium">
-              This permanently removes language, theme, text size, and setup completion from this
-              browser. It does not delete a backup file already downloaded to your device.
-              The app will return to setup after you reload.
-            </Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button disabled={busy !== null} onPress={() => setDeleteDialogVisible(false)}>
+          <Dialog.ScrollArea>
+            <ScrollView contentContainerStyle={styles.dialogScrollContent}>
+              <Text variant="bodyMedium">
+                This permanently removes language, theme, text size, and setup completion
+                from this browser. It does not delete a backup file already downloaded to
+                your device. The app will return to setup after you reload.
+              </Text>
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions
+            style={[
+              styles.dialogActions,
+              stackDialogActions && styles.dialogActionsStacked,
+            ]}
+          >
+            <Button
+              style={stackDialogActions ? styles.dialogActionFullWidth : undefined}
+              disabled={busy !== null}
+              onPress={() => setDeleteDialogVisible(false)}
+            >
               Cancel
             </Button>
             <Button
+              accessibilityLabel="Delete settings"
+              style={stackDialogActions ? styles.dialogActionFullWidth : undefined}
               textColor={theme.colors.error}
               loading={busy === 'delete'}
               disabled={busy !== null}
               onPress={() => void handleDelete()}
             >
-              Delete settings
+              {stackDialogActions ? 'Delete' : 'Delete settings'}
             </Button>
           </Dialog.Actions>
         </Dialog>
@@ -458,6 +511,27 @@ const createStyles = (textScale: TextScale) => StyleSheet.create({
   deleteButton: {
     marginTop: 16,
     marginBottom: 32,
+  },
+  dialogScrollContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+  },
+  dialog: {
+    alignSelf: 'center',
+    maxHeight: '90%',
+    maxWidth: 560,
+    width: '90%',
+  },
+  dialogActions: {
+    flexWrap: 'wrap',
+  },
+  dialogActionsStacked: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+  },
+  dialogActionFullWidth: {
+    marginHorizontal: 0,
+    width: '100%',
   },
   previewLine: {
     marginTop: 8,

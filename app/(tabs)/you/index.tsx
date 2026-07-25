@@ -11,10 +11,17 @@ import { ROUTES } from '@/constants/Routes';
 import { ThemeContext, useAppTheme } from '@/constants/Themes';
 import packageJson from '@/package.json';
 import { createNavigationStyles } from '@/styles/NavigationStyles';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router, Stack } from 'expo-router';
 import { useContext, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { List, Switch, Text, TouchableRipple } from 'react-native-paper';
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { List, Text, TouchableRipple } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const allLabels = {
@@ -79,10 +86,14 @@ export default function YouScreen() {
   const { onManualCheck, updateStatus } = useContext(UpdateContext);
   const { status: installStatus } = usePwaInstall();
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
   const [showTextSize, setShowTextSize] = useState(false);
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
   const headerHeight = insets.top + DESIGN_TOKENS.HEADER_HEIGHT_BASE;
   const labels = allLabels[language as keyof typeof allLabels] || allLabels.en;
   const englishOnly = language !== 'en';
@@ -130,14 +141,16 @@ export default function YouScreen() {
             {labels.settings}
           </List.Subheader>
           <MenuCard
+            accessibilityRole="switch"
+            accessibilityState={{ checked: theme.dark }}
             title={labels.darkMode}
             description={labels.darkModeSub}
             icon="theme-light-dark"
             iconColor={theme.colors.primary} // Use primary color for dark mode toggle
             rightElement={() => (
-              <Switch
-                value={theme.dark}
-                onValueChange={toggleTheme}
+              <MaterialCommunityIcons
+                name={theme.dark ? 'toggle-switch' : 'toggle-switch-off-outline'}
+                size={40}
                 color={theme.colors.primary}
               />
             )}
@@ -236,7 +249,6 @@ export default function YouScreen() {
 const styles = StyleSheet.create({
   footer: {
     marginTop: 32,
-    marginBottom: 48,
     alignItems: 'center',
   },
   versionRipple: {

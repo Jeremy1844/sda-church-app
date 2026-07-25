@@ -1,7 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
-import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { Divider, Text, TouchableRipple } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,7 +27,10 @@ import {
   resolveHymnScrollRecovery,
 } from '@/services/HymnalNavigation';
 import { normalizeSingleQueryParam } from '@/services/SearchQueryPolicy';
-import { createNavigationStyles } from '@/styles/NavigationStyles';
+import {
+  createNavigationStyles,
+  NAVIGATION_CONTENT_MAX_WIDTH,
+} from '@/styles/NavigationStyles';
 
 const uiLabels = {
   en: {
@@ -71,10 +80,14 @@ let lastProcessedRefresh = '';
 
 export default function HymnalScreen() {
   const { textScale } = useTextSize();
-  const NavigationStyles = createNavigationStyles(textScale);
   const styles = createStyles(textScale);
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const NavigationStyles = createNavigationStyles(textScale, {
+    bottomInset: insets.bottom,
+    fontScale,
+  });
   const { language } = useContext(LanguageContext);
   const { backTo, refresh, hymnNum, highlight } = useLocalSearchParams<{
     backTo?: string | string[];
@@ -313,7 +326,7 @@ export default function HymnalScreen() {
         onScrollToIndexFailed={recoverFailedHymnScroll}
         contentContainerStyle={[
           NavigationStyles.contentContainer,
-          { paddingTop: 8, paddingBottom: insets.bottom + 50 },
+          { paddingTop: 8 },
         ]}
       />
     </View>
@@ -322,6 +335,9 @@ export default function HymnalScreen() {
 
 const createStyles = (textScale: TextScale) => StyleSheet.create({
   header: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: NAVIGATION_CONTENT_MAX_WIDTH,
     paddingHorizontal: 16,
     paddingBottom: 12,
   },

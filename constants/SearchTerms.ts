@@ -827,7 +827,10 @@ export const ALL_SEARCH_LABELS: Record<string, any> = {
       title: 'Service Roster',
       keywords: ['volunteer', 'assignments', 'schedule'],
     },
-    prayer: { title: 'Prayer Wall', keywords: ['requests', 'intercession', 'community'] },
+    prayer: {
+      title: 'Prayer',
+      keywords: ['prayer wall', 'requests', 'intercession', 'community'],
+    },
     language: {
       title: 'Language',
       keywords: ['chinese', 'spanish', 'english', 'translate', 'settings'],
@@ -937,7 +940,7 @@ export const ALL_SEARCH_LABELS: Record<string, any> = {
     worship: { title: '安息日崇拜', keywords: ['崇拜', '聚會', 'worship'] },
     fellowship: { title: '團契', keywords: ['小組', '午餐', 'fellowship'] },
     roster: { title: '服事安排', keywords: ['義工', '服事表', 'roster'] },
-    prayer: { title: '教會禱告牆', keywords: ['代禱', '請求', 'prayer'] },
+    prayer: { title: '禱告', keywords: ['教會禱告牆', '代禱', '請求', 'prayer'] },
     language: {
       title: '語言設定',
       keywords: ['中文', '英文', '西班牙文', '翻譯', 'language', '設定'],
@@ -1048,7 +1051,7 @@ export const ALL_SEARCH_LABELS: Record<string, any> = {
     worship: { title: '安息日崇拜', keywords: ['崇拜', '聚会', 'worship'] },
     fellowship: { title: '团契', keywords: ['小组', '午餐', 'fellowship'] },
     roster: { title: '服事安排', keywords: ['义工', '服事表', 'roster'] },
-    prayer: { title: '教会祷告墙', keywords: ['代祷', '请求', 'prayer'] },
+    prayer: { title: '祷告', keywords: ['教会祷告墙', '代祷', '请求', 'prayer'] },
     language: {
       title: '语言设置',
       keywords: ['中文', '英文', '西班牙文', '翻译', 'language', '设置'],
@@ -1172,7 +1175,7 @@ export const ALL_SEARCH_LABELS: Record<string, any> = {
     },
     fellowship: { title: 'Compañerismo', keywords: ['grupos', 'fellowship'] },
     roster: { title: 'Registro de Servicio', keywords: ['voluntario', 'roster'] },
-    prayer: { title: 'Muro de Oración', keywords: ['peticiones', 'prayer'] },
+    prayer: { title: 'Oración', keywords: ['muro de oración', 'peticiones', 'prayer'] },
     language: {
       title: 'Idioma',
       keywords: ['chino', 'español', 'inglés', 'traducir', 'language', 'ajustes'],
@@ -1216,6 +1219,9 @@ export const getSearchableItems = (language: string): SearchableItem[] => {
     { ...labels.aboutSDA, icon: 'information', route: ROUTES.aboutSda },
     { ...labels.aboutHistory, icon: 'history', route: ROUTES.aboutChurch },
     { ...labels.team, icon: 'account-multiple', route: ROUTES.team },
+    { ...labels.bulletin, icon: 'file-document-outline', route: ROUTES.bulletin },
+    { ...labels.prayer, icon: 'hands-pray', route: ROUTES.prayer },
+    { ...labels.events, icon: 'calendar-star', route: ROUTES.events },
     { ...labels.baptism, icon: 'water-outline', route: ROUTES.baptism },
     { ...labels.worship, icon: 'church', route: ROUTES.worship },
     { ...labels.fellowship, icon: 'account-group', route: ROUTES.fellowship },

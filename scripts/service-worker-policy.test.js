@@ -36,7 +36,11 @@ test('service-worker cache is limited to same-origin public requests', () => {
     '/sda-church-app/data/latest-activity.json',
     '/sda-church-app/_expo/static/js/web/entry.js',
     '/sda-church-app/assets/assets/fonts/app.ttf',
+    '/sda-church-app/home/bulletin.html',
+    '/sda-church-app/home/events.html',
     '/sda-church-app/home/give.html',
+    // This is a data-free informational shell, not prayer content or a submission path.
+    '/sda-church-app/home/prayer.html',
     // Even a generated file fails closed when it belongs to a sensitive path family.
     '/sda-church-app/admin/public.html',
     '/sda-church-app/payment/receipt.html',
@@ -48,11 +52,15 @@ test('service-worker cache is limited to same-origin public requests', () => {
   assert.equal(isCacheablePath('/sda-church-app/data/latest-activity.json', buildOwnedPaths), true);
   assert.equal(isCacheablePath('/sda-church-app/_expo/static/js/web/entry.js', buildOwnedPaths), true);
   assert.equal(isCacheablePath('/sda-church-app/assets/assets/fonts/app.ttf', buildOwnedPaths), true);
+  assert.equal(isCacheablePath('/sda-church-app/home/bulletin.html', buildOwnedPaths), true);
+  assert.equal(isCacheablePath('/sda-church-app/home/events.html', buildOwnedPaths), true);
   assert.equal(isCacheablePath('/sda-church-app/home/give.html', buildOwnedPaths), true);
+  assert.equal(isCacheablePath('/sda-church-app/home/prayer.html', buildOwnedPaths), true);
   assert.equal(isCacheablePath('/api/private', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/sda-church-app/api/private', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/prayer', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/sda-church-app/prayer/request', buildOwnedPaths), false);
+  assert.equal(isCacheablePath('/sda-church-app/home/prayer/request', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/oauth/callback', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/sda-church-app/schedule/publication', buildOwnedPaths), false);
   assert.equal(isCacheablePath('/sda-church-app/admin/public.html', buildOwnedPaths), false);
@@ -85,7 +93,10 @@ test('safe extensionless navigations resolve only to cached public route documen
   const buildOwnedPaths = [
     '/sda-church-app/',
     '/sda-church-app/index.html',
+    '/sda-church-app/home/bulletin.html',
+    '/sda-church-app/home/events.html',
     '/sda-church-app/home/give.html',
+    '/sda-church-app/home/prayer.html',
     '/sda-church-app/community/prayer.html',
     // A generated path in a sensitive family must still fail closed.
     '/sda-church-app/admin/public.html',
@@ -100,6 +111,10 @@ test('safe extensionless navigations resolve only to cached public route documen
     '/sda-church-app/home/give.html',
   );
   assert.equal(
+    getCachedNavigationPath('/sda-church-app/home/prayer', buildOwnedPaths),
+    '/sda-church-app/home/prayer.html',
+  );
+  assert.equal(
     getCachedNavigationPath('/sda-church-app/community/prayer', buildOwnedPaths),
     '/sda-church-app/community/prayer.html',
   );
@@ -109,6 +124,9 @@ test('safe extensionless navigations resolve only to cached public route documen
   );
 
   assert.equal(isSafeNavigationPath('/sda-church-app/home/give', buildOwnedPaths), true);
+  assert.equal(isSafeNavigationPath('/sda-church-app/home/bulletin', buildOwnedPaths), true);
+  assert.equal(isSafeNavigationPath('/sda-church-app/home/events', buildOwnedPaths), true);
+  assert.equal(isSafeNavigationPath('/sda-church-app/home/prayer', buildOwnedPaths), true);
   assert.equal(isSafeNavigationPath('/sda-church-app/home/unknown', buildOwnedPaths), false);
   assert.equal(isSafeNavigationPath('/sda-church-app/admin/public', buildOwnedPaths), false);
   assert.equal(isSafeNavigationPath('/sda-church-app/home%2Fgive', buildOwnedPaths), false);

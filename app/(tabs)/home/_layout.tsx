@@ -7,6 +7,9 @@ export default function HomeStackLayout() {
       <Stack.Screen name="about-sda" />
       <Stack.Screen name="about-my-church" />
       <Stack.Screen name="team" />
+      <Stack.Screen name="bulletin" />
+      <Stack.Screen name="prayer" />
+      <Stack.Screen name="events" />
       <Stack.Screen name="discover" />
       <Stack.Screen name="give" />
       <Stack.Screen name="worship" />

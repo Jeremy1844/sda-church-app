@@ -32,6 +32,11 @@ export default function GiveScreen() {
       onlineDesc:
         'AdventistGiving allows you to return your tithe and give your offerings online while you are at home or on the go.',
       onlineButton: 'AdventistGiving',
+      zelleSection: 'Electronic Transfer',
+      zelleLabel: 'Direct Bank Transfer',
+      zelleTitle: 'Zelle',
+      zelleDesc:
+        'Zelle is not configured in this app. Please use only the official AdventistGiving portal above or give in person during Sabbath service.',
       quote:
         'Bring the full tithe into the storehouse, so that there may be food in My house. Test Me in this,” says the Lord of Hosts. “See if I will not open the windows of heaven and pour out for you blessing without measure.',
       quoteRef: 'Malachi 3:10',
@@ -51,6 +56,11 @@ export default function GiveScreen() {
       onlineDesc:
         'AdventistGiving 讓您無論是在家或在外，都能在線歸還什一奉獻並進行捐款。',
       onlineButton: 'AdventistGiving',
+      zelleSection: '電子轉帳',
+      zelleLabel: '直接銀行轉帳',
+      zelleTitle: 'Zelle',
+      zelleDesc:
+        '本應用程式未設定 Zelle。請僅使用上述官方 AdventistGiving 平台，或在安息日聚會中現場奉獻。',
       quote:
         '萬軍之耶和華說：你們要將當納的十分之一全然送入倉庫，使我家有糧，以此試試我，是否為你們敞開天上的窗戶，傾福與你們，甚至無處可容。',
       quoteRef: '瑪拉基書 3:10',
@@ -70,6 +80,11 @@ export default function GiveScreen() {
       onlineDesc:
         'AdventistGiving 让您无论是在家或在外，都能在线归还什一奉献并进行捐款。',
       onlineButton: 'AdventistGiving',
+      zelleSection: '电子转账',
+      zelleLabel: '直接银行转账',
+      zelleTitle: 'Zelle',
+      zelleDesc:
+        '本应用程序未配置 Zelle。请仅使用上述官方 AdventistGiving 平台，或在安息日聚会中现场奉献。',
       quote:
         '万军之耶和华说：你们要将当纳的十分之一全然送入仓库，使我家有粮，以此试试我，是否为你们敞开天上的窗户，倾福与你们，甚至无处可容。',
       quoteRef: '玛拉基书 3:10',
@@ -89,6 +104,11 @@ export default function GiveScreen() {
       onlineDesc:
         'AdventistGiving le permite devolver su diezmo y dar sus ofrendas en línea mientras está en casa o fuera.',
       onlineButton: 'AdventistGiving',
+      zelleSection: 'Transferencia Electrónica',
+      zelleLabel: 'Transferencia Bancaria Directa',
+      zelleTitle: 'Zelle',
+      zelleDesc:
+        'Zelle no está configurado en esta aplicación. Use únicamente el portal oficial AdventistGiving indicado arriba o entregue su donación en persona durante el servicio sabático.',
       quote:
         'Traed todos los diezmos al alfolí, y haya alimento en mi casa; y probadme ahora en esto, dice Jehová de los ejércitos, si no os abriré las ventanas de los cielos, y vaciaré sobre vosotros bendición hasta que sobreabunde.',
       quoteRef: 'Malaquías 3:10',
@@ -204,6 +224,47 @@ export default function GiveScreen() {
                 {labels.onlineButton}
               </Button>
             </Card.Actions>
+          </Card>
+        </View>
+
+        <View style={DocumentStyles.section}>
+          <Text
+            variant="titleLarge"
+            style={[
+              DocumentStyles.sectionTitle,
+              {
+                color: theme.colors.onSurface,
+                borderBottomColor: theme.colors.outlineVariant,
+              },
+            ]}
+          >
+            {labels.zelleSection}
+          </Text>
+          <Card style={[DocumentStyles.card, DocumentStyles.orgCard]} mode="outlined">
+            <Card.Content>
+              <Text
+                variant="labelMedium"
+                style={{ color: theme.colors.onSurfaceVariant }}
+              >
+                {labels.zelleLabel}
+              </Text>
+              <Text
+                variant="titleLarge"
+                style={[DocumentStyles.orgName, { color: theme.colors.onSurface }]}
+              >
+                {labels.zelleTitle}
+              </Text>
+              <Text
+                style={[
+                  DocumentStyles.description,
+                  DocumentStyles.orgDesc,
+                  { color: theme.colors.onSurface },
+                ]}
+                variant="bodyMedium"
+              >
+                {labels.zelleDesc}
+              </Text>
+            </Card.Content>
           </Card>
         </View>
 

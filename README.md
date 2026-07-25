@@ -12,6 +12,7 @@ release maintainer must confirm and align the production URL before deployment.
 
 - [Technical Setup & Testing](docs/README.md)
 - [UI/UX Design](docs/UI_UX.md)
+- [Original Experience Parity (0.23.0)](docs/ORIGINAL_EXPERIENCE_PARITY_0.23.0.md)
 - [Feature Designs](docs/feature_designs/)
 - [Contributing Code](docs/CONTRIBUTING.md)
 - [Branding & Trademarks](docs/LEGAL_BRANDING.md)
@@ -161,6 +162,15 @@ them in component memory only until you switch back to Elmhurst times or leave o
 the app. Device-coordinate requests also use the browser's `no-store` cache mode. The
 provider may still receive and process the coordinates and normal connection data, such
 as your IP address, under its own privacy practices.
+
+### 5. Informational Ministry and Giving Surfaces
+
+The Weekly Bulletin, Prayer, and Upcoming Events pages are informational availability
+screens. They do not submit or display prayer requests, service rosters, event
+registrations, or bulletin data, and they do not send information to an external
+provider. The unavailable Library and Zelle entries do not open a service or transmit
+data. AdventistGiving remains the only external online-giving destination provided by
+the app.
 
 ---
 

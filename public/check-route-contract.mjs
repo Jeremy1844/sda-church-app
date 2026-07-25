@@ -46,6 +46,12 @@ if (searchableFactory.includes('labels.roster')) {
   failures.push('Roster must not be exposed until a real destination exists.');
 }
 
+for (const routeName of ['bulletin', 'prayer', 'events']) {
+  if (!searchableFactory.includes(`route: ROUTES.${routeName}`)) {
+    failures.push(`ROUTES.${routeName} must remain available through global search.`);
+  }
+}
+
 const liveNavigationSources = [
   'constants/SearchTerms.ts',
   'components/GlobalHeader.tsx',
@@ -63,7 +69,7 @@ const legacyRedirects = new Map([
   ['app/community/baptism.tsx', 'ROUTES.baptism'],
   ['app/community/worship.tsx', 'ROUTES.worship'],
   ['app/community/fellowship.tsx', 'ROUTES.fellowship'],
-  ['app/community/prayer.tsx', 'ROUTES.home'],
+  ['app/community/prayer.tsx', 'ROUTES.prayer'],
 ]);
 
 for (const [relativePath, expectedTarget] of legacyRedirects) {

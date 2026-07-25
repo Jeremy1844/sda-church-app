@@ -35,7 +35,8 @@ const allLabels = {
     hymnal: 'Hymnal',
     hymnalSub: 'English and Chinese worship music',
     library: 'Library',
-    librarySub: 'Devotionals, PDFs and guides',
+    librarySub:
+      'Unavailable — no reviewed devotional materials, PDFs, or guides are published in this app.',
   },
   zh: {
     title: '資源庫',
@@ -54,7 +55,7 @@ const allLabels = {
     hymnal: '詩歌本',
     hymnalSub: '中英文敬拜音樂',
     library: '圖書館',
-    librarySub: '靈修資料、PDF 與指南',
+    librarySub: '無法使用 — 本應用程式沒有發布經審核的靈修資料、PDF 或指南。',
   },
   'zh-cn': {
     title: '资源库',
@@ -73,7 +74,7 @@ const allLabels = {
     hymnal: '诗歌本',
     hymnalSub: '中英文敬拜音乐',
     library: '图书馆',
-    librarySub: '灵修资料、PDF 与指南',
+    librarySub: '无法使用 — 本应用程序没有发布经审核的灵修资料、PDF 或指南。',
   },
   es: {
     title: 'Recursos',
@@ -93,7 +94,8 @@ const allLabels = {
     hymnal: 'Himnario',
     hymnalSub: 'Música de adoración en inglés y chino',
     library: 'Biblioteca',
-    librarySub: 'Devocionales, PDFs y guías',
+    librarySub:
+      'No disponible — esta aplicación no publica devocionales, PDF ni guías revisados.',
   },
 };
 
@@ -143,6 +145,14 @@ export default function ResourcesScreen() {
             iconColor={theme.colors.tertiary}
             rightIcon="open-in-new"
             onPress={() => openSabbathSchool(language)}
+          />
+
+          <MenuCard
+            title={labels.library}
+            description={labels.librarySub}
+            icon="bookshelf"
+            iconColor={theme.colors.tertiary}
+            rightIcon={null}
           />
 
         </List.Section>

@@ -15,6 +15,9 @@ export const ROUTES = {
   englishHymnal: '/resources/english-hymnal',
   hymnalSelection: '/resources/hymnal-selection',
   give: '/home/give',
+  bulletin: '/home/bulletin',
+  prayer: '/home/prayer',
+  events: '/home/events',
   discover: '/home/discover',
   aboutSda: '/home/about-sda',
   aboutChurch: '/home/about-my-church',
@@ -48,5 +51,5 @@ export const LEGACY_COMMUNITY_REDIRECTS = {
   '/community/baptism': ROUTES.baptism,
   '/community/worship': ROUTES.worship,
   '/community/fellowship': ROUTES.fellowship,
-  '/community/prayer': ROUTES.home,
+  '/community/prayer': ROUTES.prayer,
 } as const satisfies Record<string, AppRoute>;

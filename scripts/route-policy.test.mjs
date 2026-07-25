@@ -14,7 +14,7 @@ test('Back destinations accept only exact canonical internal routes', () => {
     '%68ttps://phish.example',
     '/you?next=https://phish.example',
     '/community/prayer',
-    '/home/events',
+    '/home/events?next=https://phish.example',
     ['', null, undefined],
   ]) {
     assert.equal(resolveSafeBackRoute(value), null);

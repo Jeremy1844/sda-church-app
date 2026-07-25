@@ -124,8 +124,8 @@ simple, blended colors.
 
 ### 1. Home (The "Pulse")
 
-**Purpose:** Immediate relevance, containing latest livestream, breaking news, and other
-priority announcements.
+**Purpose:** Immediate relevance through the daily verse, Sabbath countdown, the original
+six ministry destinations, and the separately featured latest public activity.
 
 **UI:** A scrolling dashboard of widgets
 
@@ -137,24 +137,25 @@ priority announcements.
 - **Tenet 7 (Focused):** Featured content like the livestream keeps the spiritual
   experience internal to the app, protecting users from external algorithm distractions.
 
-### 2. Community (The "In-Person" Hub)
+### 2. Bible (The Reader)
 
-**Purpose:** Moving people from the screen to events, highlighting certain events, and
-connect with the community through volunteering and small groups.
+**Purpose:** Focused multilingual Scripture reading, listening, reference navigation, and
+personal devotional tools.
 
-**UI:** Discovery Portal (Carousels and Grids)
+**UI:** Immersive reader with explicit book, chapter, translation, and audio controls.
 
 **Tenet Alignment:**
 
-- **Tenet 3 (Sanctuary):** Information is provided to facilitate connection anonymously
-- **Tenet 4 (Community):** This pillar's sole existence is to bridge the gap between
-  digital interaction and physical presence ("moving people from the screen to the pew").
-  group leader contact) without requiring user-side PII or tracking to view schedules.
+- **Tenet 3 (Sanctuary):** Reading and listening stay focused, without account or social
+  engagement requirements.
+- **Tenet 6 (Devotional):** Direct reference navigation and reliable continuation reduce
+  friction during study.
 
 ### 3. Resources (The "Spiritual" Library)
 
-**Purpose:** Deep, personal growth, and study. YouTube/Spotify sermons, a Bible reader,
-Hymnal reader, Library of generic resources like PDFs and devotionals.
+**Purpose:** Deep, personal growth and study through the hymnal, Sabbath School, sermon
+archive, audio archive, and Zoom class. The visible Library row is an unavailable status
+surface until reviewed content and permissions exist.
 
 **UI:** Reader-focused (Immersive text) through a bookshelf style archive, possibly
 grouped by media type
@@ -168,16 +169,16 @@ grouped by media type
 
 ### 4. You (The Personal History "Utility" Drawer)
 
-**Purpose:** Administrative tasks, personal history, preferences, and personal actions.
-Give/Tithes, Dark Mode, Language, History (Recent Sermons), data privacy settings, etc.
+**Purpose:** Local preferences and application utilities: appearance, text size, language,
+install guidance, local backup, privacy, and legal information.
 
 **UI:** Similar to Resources with bookshelf style archive. An additional Settings cogwheel
 may be placed on the top right of the tab if needed, like YouTube.
 
 **Tenet Alignment:**
 
-- **Tenet 1 (Sustainable):** Giving features are placed here to ensure the "tower" remains
-  funded and the app remains free to maintain.
+- **Tenet 1 (Sustainable):** Local settings and backup keep the app usable without an
+  account service.
 - **Tenet 2 (Liability-Free):** Centralizes settings and staff contact to provide
   transparent access to privacy controls and leadership.
 - **Tenet 5 (Simplicity):** Since the "History" (Recent Sermons) is stored locally on the

@@ -139,6 +139,24 @@ export default function PrivacyPolicyScreen() {
         cache mode. The provider may still receive and process the coordinates and normal
         connection data, such as your IP address, under its own privacy practices.
       </Text>
+
+      <Text
+        variant="titleMedium"
+        style={[styles.sectionHeader, { color: theme.colors.onBackground }]}
+      >
+        5. Informational Ministry and Giving Surfaces
+      </Text>
+      <Text
+        variant="bodyMedium"
+        style={[styles.bodyText, { color: theme.colors.onSurface }]}
+      >
+        The Weekly Bulletin, Prayer, and Upcoming Events pages are informational
+        availability screens. They do not submit or display prayer requests, service
+        rosters, event registrations, or bulletin data, and they do not send information
+        to an external provider. The unavailable Library and Zelle entries do not open a
+        service or transmit data. AdventistGiving remains the only external online-giving
+        destination provided by the app.
+      </Text>
     </ScrollView>
   );
 }

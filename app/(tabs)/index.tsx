@@ -13,6 +13,7 @@ import {
 import { scaleTypographyMetric, type TextScale } from '@/constants/AppPreferences';
 import { LanguageContext, SupportedLanguage } from '@/constants/LanguageContext';
 import { DESIGN_TOKENS } from '@/constants/Layout';
+import { ROUTES } from '@/constants/Routes';
 import { useTextSize } from '@/constants/TextSizeContext';
 import { useAppTheme } from '@/constants/Themes';
 import * as BibleService from '@/services/BibleService';
@@ -1039,48 +1040,27 @@ export default function HomeScreen() {
 
           {/* This Week — 2-column pastel grid */}
           <View style={styles.grid}>
-            {latestActivity ? (
-              <Card
-                mode="outlined"
-                onPress={() =>
-                  openURL(
-                    latestActivity.url,
-                    'Error',
-                    'Could not open the latest YouTube activity.',
-                  )
-                }
-                accessibilityLabel={`Open on YouTube: ${latestActivity.title}`}
-                style={styles.activityCard}
-              >
-                <Card.Cover
-                  source={require('../../assets/images/youtube_art.png')}
-                  accessibilityLabel={latestActivity.title}
-                />
-                <Card.Content style={styles.activityContent}>
-                  <MaterialCommunityIcons
-                    name="youtube"
-                    size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
-                    color={theme.colors.iconColors.livestream}
-                  />
-                  <Text
-                    variant="titleMedium"
-                    numberOfLines={2}
-                    style={[styles.activityTitle, { color: theme.colors.onSurface }]}
-                  >
-                    {latestActivity.title}
-                  </Text>
-                </Card.Content>
-              </Card>
-            ) : (
-              <GridMenuCard
-                title={labels.livestream}
-                icon="youtube"
-                color={theme.colors.cardBgColors.livestream}
-                iconColor={theme.colors.iconColors.livestream}
-                onPress={openSabbathStream}
-                style={styles.activityCard}
-              />
-            )}
+            <GridMenuCard
+              title={labels.livestream}
+              icon="youtube"
+              color={theme.colors.cardBgColors.livestream}
+              iconColor={theme.colors.iconColors.livestream}
+              onPress={openSabbathStream}
+              style={styles.gridCell}
+            />
+            <GridMenuCard
+              title={labels.bulletin}
+              icon="file-document-outline"
+              color={theme.colors.cardBgColors.bulletin}
+              iconColor={theme.colors.iconColors.bulletin}
+              onPress={() =>
+                router.push({
+                  pathname: ROUTES.bulletin,
+                  params: { backTo: ROUTES.home },
+                } as any)
+              }
+              style={styles.gridCell}
+            />
             <GridMenuCard
               title={labels.give}
               icon="hand-heart-outline"
@@ -1088,8 +1068,34 @@ export default function HomeScreen() {
               iconColor={theme.colors.iconColors.tithe}
               onPress={() =>
                 router.push({
-                  pathname: '/home/give',
-                  params: { backTo: '/' },
+                  pathname: ROUTES.give,
+                  params: { backTo: ROUTES.home },
+                } as any)
+              }
+              style={styles.gridCell}
+            />
+            <GridMenuCard
+              title={labels.prayer}
+              icon="hands-pray"
+              color={theme.colors.cardBgColors.prayer}
+              iconColor={theme.colors.iconColors.prayer}
+              onPress={() =>
+                router.push({
+                  pathname: ROUTES.prayer,
+                  params: { backTo: ROUTES.home },
+                } as any)
+              }
+              style={styles.gridCell}
+            />
+            <GridMenuCard
+              title={labels.events}
+              icon="calendar-month"
+              color={theme.colors.cardBgColors.events}
+              iconColor={theme.colors.iconColors.events}
+              onPress={() =>
+                router.push({
+                  pathname: ROUTES.events,
+                  params: { backTo: ROUTES.home },
                 } as any)
               }
               style={styles.gridCell}
@@ -1101,13 +1107,47 @@ export default function HomeScreen() {
               iconColor={theme.colors.iconColors.discover}
               onPress={() =>
                 router.push({
-                  pathname: '/home/discover',
-                  params: { backTo: '/' },
+                  pathname: ROUTES.discover,
+                  params: { backTo: ROUTES.home },
                 } as any)
               }
               style={styles.gridCell}
             />
           </View>
+
+          {latestActivity && (
+            <Card
+              mode="outlined"
+              onPress={() =>
+                openURL(
+                  latestActivity.url,
+                  'Error',
+                  'Could not open the latest YouTube activity.',
+                )
+              }
+              accessibilityLabel={`Open on YouTube: ${latestActivity.title}`}
+              style={styles.activityCard}
+            >
+              <Card.Cover
+                source={require('../../assets/images/youtube_art.png')}
+                accessibilityLabel={latestActivity.title}
+              />
+              <Card.Content style={styles.activityContent}>
+                <MaterialCommunityIcons
+                  name="youtube"
+                  size={DESIGN_TOKENS.ICON_SIZE_STANDARD}
+                  color={theme.colors.iconColors.livestream}
+                />
+                <Text
+                  variant="titleMedium"
+                  numberOfLines={2}
+                  style={[styles.activityTitle, { color: theme.colors.onSurface }]}
+                >
+                  {latestActivity.title}
+                </Text>
+              </Card.Content>
+            </Card>
+          )}
         </List.Section>
       </ScrollView>
       <Portal>

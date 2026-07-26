@@ -1,0 +1,39 @@
+# SDA Church App Git Configuration
+# Aligned with Tenet 5 (Simplicity) via a Whitelist-first approach.
+# This mirrors the logic of .aiexclude to ensure absolute consistency.
+
+# 1. Ignore everything by default
+/*
+
+# 2. Re-include source and configuration directories
+!/.github/
+!/app/
+!/assets/
+!/components/
+!/constants/
+!/docs/
+!/public/
+!/services/
+!/styles/
+
+# 3. Re-include root configuration files
+!/*.json
+!/*.md
+!/*.js
+!/*.ts
+!/*.tsx
+!/*.html
+!/.gitignore
+!/.aiexclude
+!/.env.example
+!/.vscode
+
+# 4. Explicitly ignore generated or sensitive noise
+# These are excluded even if they match whitelisted patterns.
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+.env*

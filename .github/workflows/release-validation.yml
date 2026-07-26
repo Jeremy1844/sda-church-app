@@ -1,0 +1,81 @@
+name: Release - Commit Validation
+on:
+  # ensure that subsequent commits on PR also trigger the workflow
+  push:
+    branches:
+      - "release/**"
+
+env:
+  # Opt into Node.js 24 for all JavaScript actions to resolve deprecation warnings
+  # for actions/checkout@v4 and actions/setup-node@v4.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # Job 1: Ensures a version tag exists in the PR description
+  enforce-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for version change
+        run: |
+          set -euo pipefail
+
+          # Get the version from the main branch
+          git fetch origin main
+          BASE_VER=$(git show origin/main:package.json | jq -r .version)
+
+          # Get the version from the current branch
+          HEAD_VER=$(jq -r .version package.json)
+
+          echo "Base version (main): $BASE_VER"
+          echo "Current version: $HEAD_VER"
+
+          if [ "$BASE_VER" == "$HEAD_VER" ]; then
+            echo "::error::Validation Failed: The version in package.json has not been changed compared to main. Please update the version number manually."
+            exit 1
+          fi
+          echo "Validation Passed: Version was changed from $BASE_VER to $HEAD_VER."
+
+  # Job 2: Automatically syncs configuration files if they are out of date
+  sync:
+    needs: enforce-tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Use GITHUB_TOKEN or a PAT if the release branch is protected
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Sync configuration files
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Identify current version
+          VERSION=$(jq -r .version package.json)
+          echo "Syncing files to version: $VERSION"
+
+          # Sync configuration files to match package.json
+          # This refreshes package-lock.json version without a full install
+          npm install --package-lock-only
+          npm run sync-version
+
+          git add app.json public/sw.js package-lock.json
+
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync configuration files to $VERSION [skip ci]"
+            git push origin HEAD:${{ github.ref }}
+          else
+            echo "Files are already in sync."
+          fi

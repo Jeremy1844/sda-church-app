@@ -1,0 +1,28 @@
+# SDA Church App AI Focus Configuration
+
+# 1. Exclude everything by default
+/*
+
+# 2. Re-include relevant source and documentation directories
+!/.github/
+!/app/
+!/assets/
+!/constants/
+!/docs/
+!/public/
+!/services/
+!/styles/
+
+# 3. Re-include files in the root directory
+!/*.json
+!/*.md
+!/*.js
+!/*.ts
+!/*.tsx
+!/*.html
+!/.env
+!/.env.example
+!/.gitignore
+!/.aiexclude
+
+# Note: Directories like /node_modules/, /android/, /ios/, and /.expo/ remain excluded.

@@ -1,0 +1,66 @@
+name: Deploy and Tag
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy-and-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Sync and Tag from package.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Rewrite the remote URL to include the authentication token
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+          VERSION=$(jq -r .version package.json)
+          TAG="v$VERSION"
+          echo "Version identified: $VERSION"
+
+          npm install --package-lock-only
+          npm run sync-version
+
+          git add app.json public/sw.js package-lock.json
+
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: sync configuration files for $TAG [skip ci]"
+            git push origin main
+          else
+            echo "Configuration files already in sync."
+          fi
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping tag creation."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Successfully tagged $TAG"
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to GitHub Pages
+        run: |
+          npm run deploy

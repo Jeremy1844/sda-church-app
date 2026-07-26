@@ -6,9 +6,15 @@ on:
       - codex/clean-app-fixes
     paths:
       - .github/workflows/restore-codex-archive.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/restore-codex-archive.yml
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: restore-codex-archive

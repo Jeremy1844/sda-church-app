@@ -1,0 +1,97 @@
+name: Restore Codex archive
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/restore-codex-archive.yml
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out clean branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/clean-app-fixes
+          fetch-depth: 0
+
+      - name: Retrieve and extract uploaded project archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin \
+            +refs/heads/backup/codex-upload-2026-07-26:refs/remotes/origin/backup/codex-upload-2026-07-26
+          git show \
+            refs/remotes/origin/backup/codex-upload-2026-07-26:sda-church-app-main.zip \
+            > /tmp/sda-church-app-main.zip
+
+          rm -rf /tmp/sda-archive
+          mkdir -p /tmp/sda-archive
+          unzip -q /tmp/sda-church-app-main.zip -d /tmp/sda-archive
+
+          package_file="$(find /tmp/sda-archive -type f -name package.json -not -path '*/node_modules/*' | sort | head -n 1)"
+          if [ -z "$package_file" ]; then
+            echo "No package.json was found in the uploaded archive." >&2
+            exit 1
+          fi
+
+          source_dir="$(dirname "$package_file")"
+          echo "Using archived project root: $source_dir"
+
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            "$source_dir/" ./
+
+          rm -rf sda-church-app-main
+          rm -f sda-church-app-main.zip
+
+          test -f package.json
+          test -f app.json
+          test -d app
+          test -d components
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Verify Expo dependencies
+        continue-on-error: true
+        run: npx expo-doctor
+
+      - name: Build web export
+        run: npx expo export --platform web --output-dir /tmp/sda-web-export
+
+      - name: Commit restored project and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/restore-codex-archive.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "The ZIP contains no differences from the clean upstream project."
+            exit 0
+          fi
+
+          git commit -m "Restore Codex changes from uploaded project archive"
+          git push origin HEAD:codex/clean-app-fixes

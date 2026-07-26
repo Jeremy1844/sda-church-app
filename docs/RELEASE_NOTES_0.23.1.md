@@ -35,4 +35,3 @@ The final local validation record will include the complete repository check, re
 version comparison, browser acceptance at phone and desktop widths, 100/150/200% text,
 supported themes and languages, cursor hit sweeps, source archive checksum, and the
 unchanged no-deployment disposition.
-

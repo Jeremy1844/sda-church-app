@@ -39,4 +39,3 @@ unchanged.
 - A migrated preview has one normalized version 2 representation.
 - The backup is still a non-secret settings transfer, not a full app backup, signature,
   account, cloud-sync system, or authority to add future personal data.
-

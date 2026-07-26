@@ -1,0 +1,26 @@
+{
+  "short_name": "NYCCSDA",
+  "name": "NY Chinese SDA",
+  "description": "Seventh-day Adventist church community app.",
+  "background_color": "#00405C",
+  "theme_color": "#00405C",
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/sda-church-app/",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "portrait",
+  "scope": "/sda-church-app/"
+}
